@@ -112,7 +112,7 @@ Create `package.json`:
     "file-type": "^22.0.1",
     "grammy": "^1.45.1",
     "ioredis": "^5.4.1",
-    "nanoid": "^6.0.0",
+    "nanoid": "^5.1.16",
     "pino": "^10.3.1",
     "zod": "^4.4.3"
   },
