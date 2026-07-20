@@ -1,0 +1,42 @@
+name: Feature Request
+description: Suggest a new capability or workflow improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What user outcome should this improve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the smallest useful version of the feature.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Telegram bot
+        - Templates
+        - Batch settings
+        - FFmpeg rendering
+        - Delivery
+        - Security
+        - DevOps/GitHub
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope Check
+      options:
+        - label: This can be tested with unit tests.
+        - label: This does not require committing secrets.
+        - label: This fits the Telegram-first MVP.

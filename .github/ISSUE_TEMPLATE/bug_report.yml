@@ -1,0 +1,57 @@
+name: Bug Report
+description: Report a broken behavior in the Reels bot.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for reproducible failures. Do not paste secrets, bot tokens, signed URLs, or private Telegram file URLs.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened?
+      placeholder: The bot accepted the batch but did not update the panel.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps To Reproduce
+      description: List the shortest path that reproduces the problem.
+      placeholder: |
+        1. Send /novo_lote
+        2. Choose template Humor 01
+        3. Upload 3 videos
+        4. Tap Processar lote
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Telegram bot
+        - Batch workflow
+        - FFmpeg rendering
+        - Turso/database
+        - Redis/queue
+        - Storage/ZIP delivery
+        - Railway deploy
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Paste sanitized logs only.
+      render: shell
