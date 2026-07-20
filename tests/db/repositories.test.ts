@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createClient } from "@libsql/client";
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { nanoid } from "nanoid";
 import { LibsqlBatchRepository, mapBatchRow, mapVideoRow } from "../../src/db/repositories.js";
+import { applyMigrations } from "../../src/db/migrate.js";
 import { createDraftBatch, receiveVideo, selectTemplate } from "../../src/workflow/batchWorkflow.js";
 import { DEFAULT_BATCH_SETTINGS } from "../../src/workflow/settings.js";
 
@@ -42,6 +42,7 @@ describe("db repository mappers", () => {
       original_file_name: "one.mp4",
       size_bytes: 1234,
       status: "ready",
+      input_path: "/tmp/one.mp4",
       output_url: "https://files.example.com/one.mp4",
       error_message: null,
       created_at: "2026-07-20 10:00:00",
@@ -53,7 +54,8 @@ describe("db repository mappers", () => {
       fileId: "file-1",
       fileName: "one.mp4",
       sizeBytes: 1234,
-      status: "ready"
+      status: "ready",
+      inputPath: "/tmp/one.mp4"
     });
   });
 });
@@ -69,16 +71,26 @@ describe("LibsqlBatchRepository", () => {
 
     batch = selectTemplate(batch, "humor-01");
     batch = receiveVideo(batch, { id: "video-1", fileId: "file-1", fileName: "clip.mp4", sizeBytes: 1024 }, 50);
+    batch = { ...batch, videos: [{ ...batch.videos[0], inputPath: "/tmp/reels-bot/batch-1/video-1.mp4" }] };
     await repository.saveBatch(batch);
 
-    const activeBatch = await repository.findActiveBatchByTelegramUserId("123");
+    const activeBatch = await repository.findBatchById("batch-1");
 
     expect(activeBatch).toMatchObject({
       id: "batch-1",
       telegramUserId: "123",
       status: "receiving",
       templateId: "humor-01",
-      videos: [{ id: "video-1", fileId: "file-1", fileName: "clip.mp4", sizeBytes: 1024, status: "received" }]
+      videos: [
+        {
+          id: "video-1",
+          fileId: "file-1",
+          fileName: "clip.mp4",
+          sizeBytes: 1024,
+          status: "received",
+          inputPath: "/tmp/reels-bot/batch-1/video-1.mp4"
+        }
+      ]
     });
   });
 
@@ -97,8 +109,5 @@ describe("LibsqlBatchRepository", () => {
 });
 
 async function migrateTestDatabase(client: { execute(statement: string): Promise<unknown> }) {
-  const migration = await readFile("db/migrations/001_initial_schema.sql", "utf8");
-  for (const statement of migration.split(";").map((sql) => sql.trim()).filter(Boolean)) {
-    await client.execute(statement);
-  }
+  await applyMigrations(client as never);
 }

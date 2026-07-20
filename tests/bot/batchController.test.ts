@@ -88,7 +88,8 @@ describe("batch controller", () => {
 
   it("applies settings globally before queueing the batch", async () => {
     const store = new MemoryBatchStore();
-    const controller = createController(store, ["batch-1"]);
+    const queuedBatchIds: string[] = [];
+    const controller = createController(store, ["batch-1"], queuedBatchIds);
 
     await controller.start({ telegramUserId: "123" });
     await controller.selectTemplate({ telegramUserId: "123" }, "humor-01");
@@ -102,13 +103,19 @@ describe("batch controller", () => {
 
     expect(response.batch?.status).toBe("queued");
     expect(response.batch?.settings.zoomPercent).toBe(110);
+    expect(queuedBatchIds).toEqual(["batch-1"]);
     expect(response.text).toContain("Trabalho enviado para a fila");
   });
 });
 
-function createController(store: BatchStore, ids: string[]) {
+function createController(store: BatchStore, ids: string[], queuedBatchIds: string[] = []) {
   return createBatchController({
     store,
+    queue: {
+      enqueueBatch: async (batchId) => {
+        queuedBatchIds.push(batchId);
+      }
+    },
     ids: () => ids.shift() ?? "fallback-id",
     maxBatchVideos: 50,
     maxInputBytes: 20 * 1024 * 1024,

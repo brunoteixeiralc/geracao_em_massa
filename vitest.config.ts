@@ -10,9 +10,11 @@ export default defineConfig({
       include: [
         "src/workflow/**/*.ts",
         "src/bot/**/*.ts",
+        "src/queue/**/*.ts",
         "src/renderer/**/*.ts",
         "src/security/**/*.ts",
         "src/server/**/*.ts",
+        "src/worker/**/*.ts",
         "src/db/**/*.ts"
       ],
       exclude: ["src/index.ts", "src/db/migrate.ts"]
