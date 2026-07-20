@@ -93,7 +93,7 @@ Create `package.json`:
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "test:unit": "vitest run tests/config/**/*.test.ts tests/workflow/**/*.test.ts tests/bot/**/*.test.ts tests/renderer/**/*.test.ts tests/db/**/*.test.ts",
+    "test:unit": "vitest run tests/config tests/workflow tests/bot tests/renderer tests/db",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "db:migrate": "tsx src/db/migrate.ts"
