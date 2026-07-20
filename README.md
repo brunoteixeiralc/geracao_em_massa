@@ -191,6 +191,7 @@ O repositorio foi pensado para usar bastante o GitHub:
 - GitHub Actions para CI;
 - CodeQL para analise de seguranca em TypeScript;
 - Dependabot para dependencias npm e GitHub Actions;
+- GitHub Releases geradas por tags semanticas;
 - branch protection ou rulesets no `main`;
 - GitHub secrets apenas quando algum workflow realmente precisar.
 
@@ -198,6 +199,50 @@ Veja tambem:
 
 - `docs/github-workflow.md`
 - `SECURITY.md`
+
+## Releases
+
+Releases sao criadas automaticamente quando uma tag semantica e enviada para o GitHub.
+
+Formato aceito:
+
+```text
+v0.1.0
+v0.2.0
+v1.0.0
+v1.0.0-beta.1
+```
+
+Antes de criar a tag, a versao do `package.json` deve ser a mesma da tag sem o `v`.
+
+Exemplo para publicar `v0.2.0`:
+
+```bash
+git switch -c release/v0.2.0
+npm version 0.2.0 --no-git-tag-version
+git add package.json package-lock.json
+git commit -m "chore: bump version to 0.2.0"
+git push -u origin release/v0.2.0
+```
+
+Depois que o PR for aprovado, os checks passarem e o merge for feito na `main`:
+
+```bash
+git switch main
+git pull --ff-only
+git tag -a v0.2.0 -m "v0.2.0"
+git push origin v0.2.0
+```
+
+Ao receber a tag, o workflow `.github/workflows/release.yml` roda:
+
+- `npm ci`;
+- validacao da tag contra `package.json`;
+- build TypeScript;
+- testes unitarios;
+- cobertura;
+- auditoria de seguranca;
+- criacao da GitHub Release com notas automaticas.
 
 ## Estrutura
 
