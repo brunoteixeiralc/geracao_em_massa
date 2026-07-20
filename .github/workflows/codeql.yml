@@ -1,14 +1,11 @@
 name: CodeQL
 
 on:
-  pull_request:
-    branches:
-      - main
-  push:
-    branches:
-      - main
-  schedule:
-    - cron: "30 7 * * 1"
+  workflow_dispatch:
+
+# Code scanning is only available for public repositories or private
+# repositories with GitHub Code Security enabled. Keep this workflow manual
+# until the repository can upload CodeQL results successfully.
 
 permissions:
   actions: read
