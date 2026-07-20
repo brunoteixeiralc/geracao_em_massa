@@ -5,28 +5,27 @@
 After pushing this repository to GitHub:
 
 1. Enable Dependabot alerts and Dependabot security updates.
-2. Enable CodeQL/code scanning only if the repository supports GitHub Code Security.
+2. Enable CodeQL/code scanning.
 3. Configure branch protection or rulesets for `main`.
 4. Require these checks before merge:
    - `Build, Tests, Audit`
+   - `Analyze JavaScript and TypeScript`
 5. Require pull request reviews before merge.
 6. Require conversation resolution before merge.
 7. Disable force-pushes and branch deletion on `main`.
 
 ## CodeQL
 
-CodeQL is kept in `.github/workflows/codeql.yml`, but it is manual for now.
+CodeQL runs through `.github/workflows/codeql.yml`.
 
-Reason: GitHub code scanning can upload CodeQL results only when code scanning is enabled for the repository. For private repositories, this generally requires GitHub Code Security on a supported organization or plan.
+It is configured to run on:
 
-Until code scanning is available, do not require `Analyze JavaScript and TypeScript` in the `main` ruleset. Require only `Build, Tests, Audit`.
+- pull requests to `main`;
+- pushes to `main`;
+- a weekly scheduled scan;
+- manual runs through `workflow_dispatch`.
 
-When code scanning is enabled:
-
-1. Open `.github/workflows/codeql.yml`.
-2. Add the `pull_request`, `push`, and `schedule` triggers back.
-3. Run the workflow once.
-4. Add `Analyze JavaScript and TypeScript` as a required status check.
+Because the repository is public and code scanning is enabled, require `Analyze JavaScript and TypeScript` in the `main` ruleset.
 
 ## Daily Development Flow
 
@@ -34,7 +33,7 @@ When code scanning is enabled:
 2. Create a branch from the issue.
 3. Implement with unit tests first.
 4. Open a pull request.
-5. Wait for CI and Dependabot/security checks.
+5. Wait for CI, CodeQL, and Dependabot/security checks.
 6. Merge only after checks are green and review is complete.
 
 ## Secrets
