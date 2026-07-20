@@ -108,7 +108,7 @@ For Railway, the simplest deployment can start as one Node.js service running bo
 - Telegram framework: grammY.
 - Video engine: FFmpeg installed in the deploy image.
 - Queue: BullMQ with Redis.
-- Database: PostgreSQL.
+- Database: Turso/libSQL, using SQLite-compatible schema.
 - Storage: S3-compatible object storage. Prefer Railway storage buckets if available in the target project; otherwise use Cloudflare R2.
 - Deployment: one Railway service from GitHub for the MVP, with a Dockerfile so FFmpeg availability is explicit.
 
@@ -210,7 +210,8 @@ Railway constraints:
 
 - Use grammY for the Telegram bot.
 - Start with one Railway service running both bot and worker with low worker concurrency.
-- Use Redis and PostgreSQL as managed Railway services.
+- Use Redis on Railway and Turso for the SQLite-compatible application database.
+- Configure Turso through `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` environment variables.
 - Use S3-compatible object storage for generated files and ZIP delivery.
 - Store template definitions in versioned JSON files and template media assets in the repository for the MVP.
 - Define the first template as a 1080x1920 composition with fixed top area for avatar/name/handle/headline/CTA and video placed underneath with cover crop.

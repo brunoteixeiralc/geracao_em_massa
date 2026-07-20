@@ -6,7 +6,7 @@
 
 **Architecture:** Use a TypeScript Node.js service with clean internal boundaries: bot adapter, workflow service, renderer planning, worker, storage, and persistence. Start with one Railway deployable service that can run webhook handling and a low-concurrency worker, while keeping modules split so bot and worker can become separate services after sustained processing load appears.
 
-**Tech Stack:** Node.js, TypeScript, grammY, BullMQ, Redis, PostgreSQL, Prisma, FFmpeg, Vitest, S3-compatible object storage, Docker, Railway.
+**Tech Stack:** Node.js, TypeScript, grammY, BullMQ, Redis, Turso/libSQL, SQLite migrations, FFmpeg, Vitest, S3-compatible object storage, Docker, Railway.
 
 ---
 
@@ -31,8 +31,9 @@
 - `src/queue/queue.ts`: BullMQ queue setup.
 - `src/worker/processBatch.ts`: processing orchestration.
 - `src/storage/storage.ts`: S3-compatible storage interface.
-- `src/db/client.ts`: Prisma client.
-- `prisma/schema.prisma`: database schema.
+- `src/db/client.ts`: Turso/libSQL client.
+- `src/db/migrate.ts`: lightweight SQL migration runner.
+- `db/migrations/001_initial_schema.sql`: SQLite-compatible database schema.
 - `tests/workflow/settings.test.ts`: settings tests.
 - `tests/workflow/batchWorkflow.test.ts`: workflow tests.
 - `tests/bot/panel.test.ts`: panel rendering tests.
@@ -64,14 +65,13 @@ Create `package.json`:
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.614.0",
     "@aws-sdk/s3-request-presigner": "^3.614.0",
     "@grammyjs/runner": "^2.0.3",
-    "@prisma/client": "^5.17.0",
+    "@libsql/client": "^0.17.4",
     "archiver": "^7.0.1",
     "bullmq": "^5.12.12",
     "dotenv": "^16.4.5",
@@ -81,7 +81,6 @@ Create `package.json`:
   },
   "devDependencies": {
     "@types/node": "^20.14.12",
-    "prisma": "^5.17.0",
     "tsx": "^4.16.2",
     "typescript": "^5.5.4",
     "vitest": "^2.0.4"
@@ -145,7 +144,8 @@ Create `.env.example`:
 ```env
 NODE_ENV=development
 TELEGRAM_BOT_TOKEN=replace_me
-DATABASE_URL=postgresql://user:password@localhost:5432/reels_bot
+TURSO_DATABASE_URL=libsql://database-org.turso.io
+TURSO_AUTH_TOKEN=replace_me
 REDIS_URL=redis://localhost:6379
 S3_ENDPOINT=https://example.r2.cloudflarestorage.com
 S3_REGION=auto
@@ -207,7 +207,8 @@ describe("parseEnv", () => {
     const env = parseEnv({
       NODE_ENV: "test",
       TELEGRAM_BOT_TOKEN: "token",
-      DATABASE_URL: "postgresql://user:pass@localhost:5432/db",
+      TURSO_DATABASE_URL: "file:/tmp/reels-bot-test.db",
+      TURSO_AUTH_TOKEN: "token",
       REDIS_URL: "redis://localhost:6379",
       S3_ENDPOINT: "https://storage.example.com",
       S3_REGION: "auto",
@@ -248,7 +249,8 @@ import { z } from "zod";
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   TELEGRAM_BOT_TOKEN: z.string().min(1),
-  DATABASE_URL: z.string().url().or(z.string().startsWith("postgresql://")),
+  TURSO_DATABASE_URL: z.string().min(1),
+  TURSO_AUTH_TOKEN: z.string().min(1),
   REDIS_URL: z.string().startsWith("redis"),
   S3_ENDPOINT: z.string().url(),
   S3_REGION: z.string().min(1),
@@ -276,7 +278,8 @@ export function parseEnv(source: NodeJS.ProcessEnv) {
   return {
     nodeEnv: result.data.NODE_ENV,
     telegramBotToken: result.data.TELEGRAM_BOT_TOKEN,
-    databaseUrl: result.data.DATABASE_URL,
+    tursoDatabaseUrl: result.data.TURSO_DATABASE_URL,
+    tursoAuthToken: result.data.TURSO_AUTH_TOKEN,
     redisUrl: result.data.REDIS_URL,
     s3Endpoint: result.data.S3_ENDPOINT,
     s3Region: result.data.S3_REGION,
@@ -967,99 +970,146 @@ git commit -m "feat: plan ffmpeg reels renders"
 ## Task 7: Persistence Schema
 
 **Files:**
-- Create: `prisma/schema.prisma`
+- Create: `db/migrations/001_initial_schema.sql`
 - Create: `src/db/client.ts`
+- Create: `src/db/migrate.ts`
 
-- [ ] **Step 1: Add Prisma schema**
+- [ ] **Step 1: Add SQLite schema**
 
-Create `prisma/schema.prisma`:
+Create `db/migrations/001_initial_schema.sql`:
 
-```prisma
-generator client {
-  provider = "prisma-client-js"
-}
+```sql
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  version TEXT PRIMARY KEY,
+  applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  telegram_user_id TEXT NOT NULL UNIQUE,
+  username TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 
-model User {
-  id             String   @id @default(cuid())
-  telegramUserId String   @unique
-  username       String?
-  createdAt      DateTime @default(now())
-  batches        Batch[]
-}
+CREATE TABLE IF NOT EXISTS batches (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  template_id TEXT,
+  status TEXT NOT NULL,
+  settings_json TEXT NOT NULL,
+  status_panel_chat_id TEXT,
+  status_panel_message_id TEXT,
+  output_zip_url TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
 
-model Batch {
-  id                   String      @id @default(cuid())
-  userId               String
-  templateId           String?
-  status               String
-  settings             Json
-  statusPanelChatId    String?
-  statusPanelMessageId String?
-  outputZipUrl         String?
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
-  user                 User        @relation(fields: [userId], references: [id])
-  videos               Video[]
-  events               BatchEvent[]
-}
+CREATE INDEX IF NOT EXISTS idx_batches_user_id ON batches(user_id);
+CREATE INDEX IF NOT EXISTS idx_batches_status ON batches(status);
 
-model Video {
-  id               String   @id @default(cuid())
-  batchId          String
-  telegramFileId   String
-  originalFileName String
-  sizeBytes        Int
-  status           String
-  outputUrl        String?
-  errorMessage     String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  batch            Batch    @relation(fields: [batchId], references: [id])
-}
+CREATE TABLE IF NOT EXISTS videos (
+  id TEXT PRIMARY KEY,
+  batch_id TEXT NOT NULL,
+  telegram_file_id TEXT NOT NULL,
+  original_file_name TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  output_url TEXT,
+  error_message TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (batch_id) REFERENCES batches(id)
+);
 
-model BatchEvent {
-  id        String   @id @default(cuid())
-  batchId   String
-  type      String
-  message   String
-  metadata  Json?
-  createdAt DateTime @default(now())
-  batch     Batch    @relation(fields: [batchId], references: [id])
-}
+CREATE INDEX IF NOT EXISTS idx_videos_batch_id ON videos(batch_id);
+CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);
+
+CREATE TABLE IF NOT EXISTS batch_events (
+  id TEXT PRIMARY KEY,
+  batch_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  message TEXT NOT NULL,
+  metadata_json TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (batch_id) REFERENCES batches(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_batch_events_batch_id ON batch_events(batch_id);
 ```
 
-- [ ] **Step 2: Add Prisma client**
+- [ ] **Step 2: Add Turso/libSQL client**
 
 Create `src/db/client.ts`:
 
 ```ts
-import { PrismaClient } from "@prisma/client";
+import { createClient } from "@libsql/client";
+import type { AppEnv } from "../config/env.js";
 
-export const prisma = new PrismaClient();
+export function createDbClient(env: Pick<AppEnv, "tursoDatabaseUrl" | "tursoAuthToken">) {
+  return createClient({
+    url: env.tursoDatabaseUrl,
+    authToken: env.tursoAuthToken
+  });
+}
 ```
 
-- [ ] **Step 3: Generate client**
+- [ ] **Step 3: Add migration runner**
 
-Run: `npm run prisma:generate`
+Create `src/db/migrate.ts`:
 
-Expected: Prisma client is generated successfully.
+```ts
+import "dotenv/config";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parseEnv } from "../config/env.js";
+import { createDbClient } from "./client.js";
 
-- [ ] **Step 4: Verify build**
+const env = parseEnv(process.env);
+const db = createDbClient(env);
+const rootDir = join(fileURLToPath(new URL("../..", import.meta.url)));
+const migrationPath = join(rootDir, "db/migrations/001_initial_schema.sql");
+const sql = await readFile(migrationPath, "utf8");
+
+await db.batch(
+  sql
+    .split(";")
+    .map((statement) => statement.trim())
+    .filter(Boolean)
+    .map((statement) => ({ sql: statement, args: [] })),
+  "write"
+);
+
+await db.execute({
+  sql: "INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)",
+  args: ["001_initial_schema"]
+});
+
+console.log("Applied migration 001_initial_schema");
+```
+
+- [ ] **Step 4: Run migration against a local SQLite file**
+
+Run:
+
+```bash
+TURSO_DATABASE_URL=file:/tmp/reels-bot-plan.db TURSO_AUTH_TOKEN=local TELEGRAM_BOT_TOKEN=test REDIS_URL=redis://localhost:6379 S3_ENDPOINT=https://storage.example.com S3_REGION=auto S3_BUCKET=bucket S3_ACCESS_KEY_ID=key S3_SECRET_ACCESS_KEY=secret PUBLIC_ASSET_BASE_URL=https://files.example.com npm run db:migrate
+```
+
+Expected: output contains `Applied migration 001_initial_schema`.
+
+- [ ] **Step 5: Verify build**
 
 Run: `npm run build`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add prisma/schema.prisma src/db/client.ts package.json package-lock.json
-git commit -m "feat: add persistence schema"
+git add db/migrations/001_initial_schema.sql src/db/client.ts src/db/migrate.ts package.json package-lock.json
+git commit -m "feat: add turso persistence schema"
 ```
 
 ## Task 8: Queue, Storage, and Worker Skeleton
@@ -1287,7 +1337,6 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run prisma:generate
 RUN npm run build
 
 CMD ["npm", "run", "start"]
@@ -1327,11 +1376,11 @@ git commit -m "chore: add railway deployment config"
 - Modify: `src/bot/bot.ts`
 - Modify: `src/worker/processBatch.ts`
 - Modify: `src/storage/storage.ts`
-- Modify: `prisma/schema.prisma`
+- Modify: `src/db/client.ts`
 
 - [ ] **Step 1: Implement real batch persistence in bot handlers**
 
-Use Prisma in `src/bot/bot.ts` so `/novo_lote`, template selection, video upload, settings changes, and process action persist batch state instead of using in-memory examples.
+Use the Turso/libSQL client in `src/bot/bot.ts` so `/novo_lote`, template selection, video upload, settings changes, and process action persist batch state instead of using in-memory examples.
 
 - [ ] **Step 2: Implement Telegram video file download in worker**
 
@@ -1362,7 +1411,7 @@ Send each generated video through Telegram when it is under `MAX_TELEGRAM_SEND_B
 
 - [ ] **Step 7: Verify with staging bot**
 
-Run locally with a real bot token, Redis, Postgres, and storage variables.
+Run locally with a real bot token, Redis, Turso, and storage variables.
 
 Expected:
 
@@ -1380,13 +1429,13 @@ failed videos remain visible in final panel
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/bot/bot.ts src/worker/processBatch.ts src/storage/storage.ts prisma/schema.prisma
+git add src/bot/bot.ts src/worker/processBatch.ts src/storage/storage.ts src/db/client.ts
 git commit -m "feat: complete telegram reels mvp"
 ```
 
 ## Self-Review
 
-- Spec coverage: the plan covers Telegram-only interface, fixed templates, up to 50 videos, global settings, live status panel, Railway, FFmpeg rendering, queue, PostgreSQL, Redis, object storage, Telegram plus ZIP delivery, and visible per-video errors.
+- Spec coverage: the plan covers Telegram-only interface, fixed templates, up to 50 videos, global settings, live status panel, Railway, FFmpeg rendering, queue, Turso/libSQL, Redis, object storage, Telegram plus ZIP delivery, and visible per-video errors.
 - Scope: the MVP remains one product path and excludes web dashboard, custom templates, payments, and Instagram publishing.
 - Type consistency: `Batch`, `BatchSettings`, `TemplateDefinition`, and status strings are defined before downstream tasks reference them.
 - Risk: Task 11 is intentionally larger than earlier tasks because it binds external APIs and FFmpeg together; execute it in smaller code commits if the implementation reveals useful sub-boundaries.
