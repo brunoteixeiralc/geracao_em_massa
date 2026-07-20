@@ -17,6 +17,10 @@ export type BatchStore = {
   saveBatch(batch: Batch): Promise<void>;
 };
 
+export type BatchQueue = {
+  enqueueBatch(batchId: string): Promise<void>;
+};
+
 export type TelegramUserRef = {
   telegramUserId: string;
   username?: string;
@@ -45,6 +49,7 @@ export type BatchControllerResponse = {
 
 export type BatchControllerOptions = {
   store: BatchStore;
+  queue?: BatchQueue;
   ids: () => string;
   maxBatchVideos: number;
   maxInputBytes: number;
@@ -136,6 +141,7 @@ export function createBatchController(options: BatchControllerOptions) {
       const batch = await requireActiveBatch(options.store, user.telegramUserId);
       const updated = startProcessing(batch);
       await options.store.saveBatch(updated);
+      await options.queue?.enqueueBatch(updated.id);
 
       return {
         text: [renderBatchPanel(updated), "", "Trabalho enviado para a fila. O processamento continua no servidor."].join("\n"),

@@ -7,6 +7,7 @@ export type BatchVideo = {
   fileName: string;
   sizeBytes: number;
   status: VideoStatus;
+  inputPath?: string | null;
 };
 
 export type Batch = {
@@ -67,5 +68,9 @@ export function openSettings(batch: Batch): Batch {
 export function startProcessing(batch: Batch): Batch {
   const settingsBatch = batch.status === "settings" ? batch : openSettings(batch);
 
-  return { ...settingsBatch, status: "queued" };
+  return {
+    ...settingsBatch,
+    status: "queued",
+    videos: settingsBatch.videos.map((video) => ({ ...video, status: "queued" }))
+  };
 }

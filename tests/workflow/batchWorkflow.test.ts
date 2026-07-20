@@ -33,5 +33,6 @@ describe("batch workflow", () => {
     batch = startProcessing(batch);
 
     expect(batch.status).toBe("queued");
+    expect(batch.videos).toEqual([{ id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000, status: "queued" }]);
   });
 });

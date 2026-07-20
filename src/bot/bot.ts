@@ -3,13 +3,14 @@ import { nanoid } from "nanoid";
 import { validateMediaInput } from "../security/media.js";
 import { isTrustedTelegramUser } from "../security/access.js";
 import { type AppEnv } from "../config/env.js";
-import { type BatchStore, createBatchController, type BatchControllerResponse } from "./batchController.js";
+import { type BatchQueue, type BatchStore, createBatchController, type BatchControllerResponse } from "./batchController.js";
 import { receivingKeyboard, settingsKeyboard, templateKeyboard } from "./keyboards.js";
 
-export function createTelegramBot(options: { env: AppEnv; store: BatchStore }) {
+export function createTelegramBot(options: { env: AppEnv; store: BatchStore; queue?: BatchQueue }) {
   const bot = new Bot(options.env.telegramBotToken);
   const controller = createBatchController({
     store: options.store,
+    queue: options.queue,
     ids: () => nanoid(),
     maxBatchVideos: options.env.maxBatchVideos,
     maxInputBytes: options.env.maxInputBytes,

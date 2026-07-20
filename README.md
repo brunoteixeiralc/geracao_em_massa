@@ -17,6 +17,8 @@ Escopo principal:
 - ajustes padrao globais por lote;
 - painel vivo de status no Telegram;
 - processamento no servidor;
+- fila Redis/BullMQ para processar lotes;
+- worker separado para baixar arquivos do Telegram;
 - persistencia no Turso;
 - deploy no Railway;
 - entrega individual pelo Telegram e pacote `.zip` ao final;
@@ -30,9 +32,10 @@ Escopo principal:
 4. O bot valida quantidade, tamanho e tipo dos arquivos.
 5. O usuario confirma os ajustes globais do lote, como zoom, velocidade, cortes, espelhamento, CTA, marca d'agua e antiduplicidade.
 6. O bot cria o lote, salva o estado no Turso e envia para a fila.
-7. O painel do Telegram vai sendo atualizado conforme cada fase avanca.
-8. Os videos sao processados com FFmpeg.
-9. O bot entrega os Reels prontos e tambem um `.zip` com o lote completo.
+7. O worker baixa os arquivos originais do Telegram para `WORK_DIR`.
+8. O painel do Telegram vai sendo atualizado conforme cada fase avanca.
+9. Os videos sao processados com FFmpeg.
+10. O bot entrega os Reels prontos e tambem um `.zip` com o lote completo.
 
 Comandos iniciais:
 
@@ -52,6 +55,8 @@ Fundacao tecnica do MVP ja preparada:
 - regras de ajustes globais por lote;
 - templates fixos iniciais;
 - renderizacao do painel de status do Telegram;
+- fila BullMQ para enfileirar lotes;
+- worker inicial para baixar videos do Telegram;
 - plano de argumentos para FFmpeg;
 - schema inicial do banco Turso/libSQL;
 - repositorios de persistencia;
@@ -102,6 +107,8 @@ Comandos principais:
 
 ```bash
 npm run build
+npm run start
+npm run start:worker
 npm run test:unit
 npm run test:coverage
 npm audit --audit-level=high
@@ -167,6 +174,12 @@ O schema inicial cria tabelas para:
 - eventos de status;
 - resultados gerados.
 
+As migrations sao aplicadas em ordem com:
+
+```bash
+npm run db:migrate
+```
+
 ## Deploy No Railway
 
 O Railway sera usado para hospedar o servidor do bot e o worker de processamento.
@@ -180,12 +193,24 @@ Configuracao esperada:
 - `WORK_DIR` apontando para uma pasta temporaria do container;
 - health check HTTP exposto pelo Fastify.
 
-Build e start:
+Processo web:
 
 ```bash
 npm run build
 npm run start
 ```
+
+Processo worker:
+
+```bash
+npm run build
+npm run start:worker
+```
+
+No Railway, o ideal e ter dois services usando o mesmo repositorio:
+
+- `web`: recebe webhooks do Telegram e enfileira lotes;
+- `worker`: consome a fila BullMQ, baixa os arquivos do Telegram e prepara a etapa de renderizacao.
 
 ## GitHub
 
