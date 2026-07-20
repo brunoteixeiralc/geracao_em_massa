@@ -43,6 +43,7 @@ describe("db repository mappers", () => {
       size_bytes: 1234,
       status: "ready",
       input_path: "/tmp/one.mp4",
+      output_path: "/tmp/out.mp4",
       output_url: "https://files.example.com/one.mp4",
       error_message: null,
       created_at: "2026-07-20 10:00:00",
@@ -55,7 +56,8 @@ describe("db repository mappers", () => {
       fileName: "one.mp4",
       sizeBytes: 1234,
       status: "ready",
-      inputPath: "/tmp/one.mp4"
+      inputPath: "/tmp/one.mp4",
+      outputPath: "/tmp/out.mp4"
     });
   });
 });
@@ -71,7 +73,16 @@ describe("LibsqlBatchRepository", () => {
 
     batch = selectTemplate(batch, "humor-01");
     batch = receiveVideo(batch, { id: "video-1", fileId: "file-1", fileName: "clip.mp4", sizeBytes: 1024 }, 50);
-    batch = { ...batch, videos: [{ ...batch.videos[0], inputPath: "/tmp/reels-bot/batch-1/video-1.mp4" }] };
+    batch = {
+      ...batch,
+      videos: [
+        {
+          ...batch.videos[0],
+          inputPath: ".data/reels-bot/batch-1/video-1.mp4",
+          outputPath: ".data/reels-bot/batch-1/rendered/video-1.mp4"
+        }
+      ]
+    };
     await repository.saveBatch(batch);
 
     const activeBatch = await repository.findBatchById("batch-1");
@@ -88,7 +99,8 @@ describe("LibsqlBatchRepository", () => {
           fileName: "clip.mp4",
           sizeBytes: 1024,
           status: "received",
-          inputPath: "/tmp/reels-bot/batch-1/video-1.mp4"
+          inputPath: ".data/reels-bot/batch-1/video-1.mp4",
+          outputPath: ".data/reels-bot/batch-1/rendered/video-1.mp4"
         }
       ]
     });

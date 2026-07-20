@@ -18,7 +18,7 @@ Escopo principal:
 - painel vivo de status no Telegram;
 - processamento no servidor;
 - fila Redis/BullMQ para processar lotes;
-- worker separado para baixar arquivos do Telegram;
+- worker separado para baixar arquivos do Telegram e renderizar com FFmpeg;
 - persistencia no Turso;
 - deploy no Railway;
 - entrega individual pelo Telegram e pacote `.zip` ao final;
@@ -33,8 +33,8 @@ Escopo principal:
 5. O usuario confirma os ajustes globais do lote, como zoom, velocidade, cortes, espelhamento, CTA, marca d'agua e antiduplicidade.
 6. O bot cria o lote, salva o estado no Turso e envia para a fila.
 7. O worker baixa os arquivos originais do Telegram para `WORK_DIR`.
-8. O painel do Telegram vai sendo atualizado conforme cada fase avanca.
-9. Os videos sao processados com FFmpeg.
+8. O worker valida os caminhos locais e renderiza os videos com FFprobe/FFmpeg.
+9. O painel do Telegram vai sendo atualizado conforme cada fase avanca.
 10. O bot entrega os Reels prontos e tambem um `.zip` com o lote completo.
 
 Comandos iniciais:
@@ -56,8 +56,8 @@ Fundacao tecnica do MVP ja preparada:
 - templates fixos iniciais;
 - renderizacao do painel de status do Telegram;
 - fila BullMQ para enfileirar lotes;
-- worker inicial para baixar videos do Telegram;
-- plano de argumentos para FFmpeg;
+- worker inicial para baixar videos do Telegram e renderizar MP4s locais;
+- executor FFprobe/FFmpeg sem shell para gerar Reels 9:16;
 - schema inicial do banco Turso/libSQL;
 - repositorios de persistencia;
 - testes unitarios das regras principais;
@@ -191,6 +191,7 @@ Configuracao esperada:
 - Redis disponivel para BullMQ;
 - storage S3/R2 configurado para arquivos prontos;
 - `WORK_DIR` apontando para uma pasta privada do container, fora de `/tmp`;
+- deploy usando o `Dockerfile`, que instala `ffmpeg` e `ffprobe`;
 - health check HTTP exposto pelo Fastify.
 
 Processo web:
@@ -210,7 +211,14 @@ npm run start:worker
 No Railway, o ideal e ter dois services usando o mesmo repositorio:
 
 - `web`: recebe webhooks do Telegram e enfileira lotes;
-- `worker`: consome a fila BullMQ, baixa os arquivos do Telegram e prepara a etapa de renderizacao.
+- `worker`: consome a fila BullMQ, baixa os arquivos do Telegram, valida duracao com FFprobe e renderiza MP4s com FFmpeg.
+
+O `Dockerfile` usa `npm run start` como comando padrao para o service `web`.
+No service `worker`, configure o comando inicial como:
+
+```bash
+npm run start:worker
+```
 
 ## GitHub
 
@@ -283,7 +291,7 @@ src/
   bot/          Painel e teclados do Telegram
   config/       Variaveis de ambiente tipadas
   db/           Cliente Turso, migrations e repositorios
-  renderer/     Planejamento de renderizacao com FFmpeg
+  renderer/     Planejamento e execucao de renderizacao com FFprobe/FFmpeg
   security/     Acesso autorizado e validacao de midia
   templates/    Templates fixos
   workflow/     Regras de lote, ajustes e status
@@ -305,10 +313,8 @@ docs/
 
 ## Proximas Etapas
 
-- Conectar comandos reais do Telegram ao fluxo de lote.
-- Implementar download dos arquivos recebidos via Telegram.
-- Criar worker BullMQ para processamento real.
-- Integrar FFmpeg de ponta a ponta.
+- Criar ZIP dos videos renderizados.
 - Salvar resultados no storage S3/R2.
 - Entregar videos e ZIP pelo Telegram.
-- Expandir testes unitarios e adicionar testes de integracao para banco, fila e renderizacao.
+- Expandir painel vivo com progresso detalhado por fase.
+- Adicionar testes de integracao com videos pequenos reais no FFmpeg.

@@ -1,6 +1,6 @@
 import { Worker } from "bullmq";
 import { BATCH_QUEUE_NAME, PROCESS_BATCH_JOB, createRedisConnection, type BatchJobData } from "../queue/batchQueue.js";
-import { processQueuedBatch, type WorkerBatchStore, type WorkerDownloader } from "./processBatch.js";
+import { processQueuedBatch, type WorkerBatchStore, type WorkerDownloader, type WorkerRenderer } from "./processBatch.js";
 
 export type WorkerHandle = {
   close(): Promise<unknown>;
@@ -17,6 +17,7 @@ export function createBatchWorker(options: {
   concurrency: number;
   store: WorkerBatchStore;
   downloader: WorkerDownloader;
+  renderer: WorkerRenderer;
   createWorker?: WorkerFactory;
 }) {
   const workerFactory = options.createWorker ?? createDefaultWorker(options.redisUrl);
@@ -31,7 +32,8 @@ export function createBatchWorker(options: {
       return processQueuedBatch({
         batchId: job.data.batchId,
         store: options.store,
-        downloader: options.downloader
+        downloader: options.downloader,
+        renderer: options.renderer
       });
     },
     {

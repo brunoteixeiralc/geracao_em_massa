@@ -29,6 +29,7 @@ export type VideoRow = {
   size_bytes: number;
   status: string;
   input_path: string | null;
+  output_path: string | null;
   output_url: string | null;
   error_message: string | null;
   created_at: string;
@@ -53,7 +54,8 @@ export function mapVideoRow(row: VideoRow): BatchVideo {
     fileName: row.original_file_name,
     sizeBytes: row.size_bytes,
     status: row.status as VideoStatus,
-    inputPath: row.input_path
+    inputPath: row.input_path,
+    outputPath: row.output_path
   };
 }
 
@@ -149,17 +151,27 @@ export class LibsqlBatchRepository {
     for (const video of batch.videos) {
       await this.client.execute({
         sql: `
-          INSERT INTO videos (id, batch_id, telegram_file_id, original_file_name, size_bytes, status, input_path)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO videos (id, batch_id, telegram_file_id, original_file_name, size_bytes, status, input_path, output_path)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             telegram_file_id = excluded.telegram_file_id,
             original_file_name = excluded.original_file_name,
             size_bytes = excluded.size_bytes,
             status = excluded.status,
             input_path = excluded.input_path,
+            output_path = excluded.output_path,
             updated_at = datetime('now')
         `,
-        args: [video.id, batch.id, video.fileId, video.fileName, video.sizeBytes, video.status, video.inputPath ?? null]
+        args: [
+          video.id,
+          batch.id,
+          video.fileId,
+          video.fileName,
+          video.sizeBytes,
+          video.status,
+          video.inputPath ?? null,
+          video.outputPath ?? null
+        ]
       });
     }
   }

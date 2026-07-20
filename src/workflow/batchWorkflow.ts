@@ -8,6 +8,7 @@ export type BatchVideo = {
   sizeBytes: number;
   status: VideoStatus;
   inputPath?: string | null;
+  outputPath?: string | null;
 };
 
 export type Batch = {
