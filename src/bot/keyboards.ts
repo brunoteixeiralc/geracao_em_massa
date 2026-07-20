@@ -27,6 +27,10 @@ export function settingsKeyboard() {
     .row()
     .text("Espelhar on/off", "settings:mirror")
     .row()
+    .text("Corte auto on/off", "settings:auto_cut")
+    .row()
+    .text("Antidup on/off", "settings:antiduplication")
+    .row()
     .text("Processar lote", "batch:process")
     .row()
     .text("Cancelar lote", "batch:cancel");

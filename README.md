@@ -34,6 +34,13 @@ Escopo principal:
 8. Os videos sao processados com FFmpeg.
 9. O bot entrega os Reels prontos e tambem um `.zip` com o lote completo.
 
+Comandos iniciais:
+
+- `/start` mostra a mensagem inicial do bot.
+- `/novo` cria um novo lote e abre a escolha de template.
+
+Durante o lote, o bot usa botoes inline para escolher template, finalizar envio, alterar ajustes globais e enviar o trabalho para a fila.
+
 ## Status Atual
 
 Fundacao tecnica do MVP ja preparada:

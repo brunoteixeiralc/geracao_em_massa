@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "test:unit": "vitest run tests/config tests/workflow tests/security tests/bot tests/renderer tests/db",
+    "test:unit": "vitest run tests/config tests/workflow tests/security tests/bot tests/renderer tests/db tests/server",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "db:migrate": "tsx src/db/migrate.ts"
