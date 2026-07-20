@@ -1,5 +1,4 @@
 import { mkdir, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { nanoid } from "nanoid";
 import { describe, expect, it } from "vitest";
@@ -7,7 +6,7 @@ import { createZipPackager } from "../../src/packager/zipPackager.js";
 
 describe("createZipPackager", () => {
   it("creates a zip file with rendered videos", async () => {
-    const workDir = join(tmpdir(), `reels-zip-${nanoid()}`);
+    const workDir = join(process.cwd(), ".data", "test", `reels-zip-${nanoid()}`);
     const renderedDir = join(workDir, "batch-1", "rendered");
     await mkdir(renderedDir, { recursive: true });
     const firstPath = join(renderedDir, "a.mp4");
@@ -33,7 +32,7 @@ describe("createZipPackager", () => {
   });
 
   it("rejects videos without rendered output paths", async () => {
-    const packager = createZipPackager({ workDir: join(tmpdir(), `reels-zip-${nanoid()}`) });
+    const packager = createZipPackager({ workDir: join(process.cwd(), ".data", "test", `reels-zip-${nanoid()}`) });
 
     await expect(
       packager.createBatchZip({

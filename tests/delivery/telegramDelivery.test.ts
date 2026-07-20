@@ -1,5 +1,4 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { nanoid } from "nanoid";
 import { describe, expect, it } from "vitest";
@@ -7,7 +6,7 @@ import { createTelegramDelivery } from "../../src/delivery/telegramDelivery.js";
 
 describe("createTelegramDelivery", () => {
   it("sends ready videos under the size limit and always sends the zip link", async () => {
-    const workDir = join(tmpdir(), `reels-delivery-${nanoid()}`);
+    const workDir = join(process.cwd(), ".data", "test", `reels-delivery-${nanoid()}`);
     await mkdir(workDir, { recursive: true });
     const smallVideoPath = join(workDir, "small.mp4");
     const largeVideoPath = join(workDir, "large.mp4");

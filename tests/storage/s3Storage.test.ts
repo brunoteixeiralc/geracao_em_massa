@@ -1,5 +1,4 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { nanoid } from "nanoid";
 import { describe, expect, it } from "vitest";
@@ -7,7 +6,7 @@ import { createS3Storage } from "../../src/storage/s3Storage.js";
 
 describe("createS3Storage", () => {
   it("uploads a local file and returns a public URL", async () => {
-    const workDir = join(tmpdir(), `reels-storage-${nanoid()}`);
+    const workDir = join(process.cwd(), ".data", "test", `reels-storage-${nanoid()}`);
     await mkdir(workDir, { recursive: true });
     const filePath = join(workDir, "clip.mp4");
     await writeFile(filePath, "video");
