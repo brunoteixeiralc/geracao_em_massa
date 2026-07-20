@@ -1,4 +1,5 @@
 import type { Batch } from "../workflow/batchWorkflow.js";
+import { getTemplateById } from "../templates/templates.js";
 
 export type WorkerBatchStore = {
   findBatchById(batchId: string): Promise<Batch | null>;
@@ -17,10 +18,23 @@ export type WorkerDownloader = {
   }>;
 };
 
+export type WorkerRenderer = {
+  renderVideo(input: {
+    batchId: string;
+    videoId: string;
+    inputPath: string;
+    template: NonNullable<ReturnType<typeof getTemplateById>>;
+    settings: Batch["settings"];
+  }): Promise<{
+    outputPath: string;
+  }>;
+};
+
 export async function processQueuedBatch(options: {
   batchId: string;
   store: WorkerBatchStore;
   downloader: WorkerDownloader;
+  renderer: WorkerRenderer;
 }) {
   const batch = await options.store.findBatchById(options.batchId);
   if (!batch) {
@@ -29,6 +43,11 @@ export async function processQueuedBatch(options: {
 
   if (batch.status !== "queued") {
     throw new Error(`Cannot process batch while status is ${batch.status}`);
+  }
+
+  const template = batch.templateId ? getTemplateById(batch.templateId) : undefined;
+  if (!template) {
+    throw new Error("Batch template not found");
   }
 
   let currentBatch: Batch = {
@@ -66,6 +85,48 @@ export async function processQueuedBatch(options: {
   }
 
   currentBatch = { ...currentBatch, status: "validating" };
+  await options.store.saveBatch(currentBatch);
+
+  currentBatch = { ...currentBatch, status: "rendering" };
+  await options.store.saveBatch(currentBatch);
+
+  for (const video of currentBatch.videos) {
+    if (!video.inputPath) {
+      currentBatch = updateVideo(currentBatch, video.id, { status: "failed" });
+      await options.store.saveBatch(currentBatch);
+      continue;
+    }
+
+    currentBatch = updateVideo(currentBatch, video.id, { status: "rendering" });
+    await options.store.saveBatch(currentBatch);
+
+    try {
+      const render = await options.renderer.renderVideo({
+        batchId: currentBatch.id,
+        videoId: video.id,
+        inputPath: video.inputPath,
+        template,
+        settings: currentBatch.settings
+      });
+
+      currentBatch = updateVideo(currentBatch, video.id, {
+        status: "ready",
+        outputPath: render.outputPath
+      });
+      await options.store.saveBatch(currentBatch);
+    } catch {
+      currentBatch = updateVideo(currentBatch, video.id, { status: "failed" });
+      await options.store.saveBatch(currentBatch);
+    }
+  }
+
+  if (currentBatch.videos.every((video) => video.status === "failed")) {
+    currentBatch = { ...currentBatch, status: "failed" };
+    await options.store.saveBatch(currentBatch);
+    return currentBatch;
+  }
+
+  currentBatch = { ...currentBatch, status: "zipping" };
   await options.store.saveBatch(currentBatch);
 
   return currentBatch;

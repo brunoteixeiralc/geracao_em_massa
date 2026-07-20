@@ -30,4 +30,16 @@ describe("buildFfmpegArgs", () => {
 
     expect(args.join(" ")).toContain("hflip");
   });
+
+  it("uses input duration to trim the end of the video", () => {
+    const args = buildFfmpegArgs({
+      inputPath: "/tmp/in.mp4",
+      outputPath: "/tmp/out.mp4",
+      template: TEMPLATES[0],
+      settings: { ...DEFAULT_BATCH_SETTINGS, trimStartSeconds: 0.3, trimEndSeconds: 0.7 },
+      inputDurationSeconds: 10
+    });
+
+    expect(args.join(" ")).toContain("trim=start=0.3:end=9.3");
+  });
 });

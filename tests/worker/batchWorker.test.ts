@@ -36,6 +36,11 @@ describe("createBatchWorker", () => {
           return { inputPath: `/tmp/${input.videoId}.mp4`, bytesWritten: 1000 };
         }
       },
+      renderer: {
+        async renderVideo(input) {
+          return { outputPath: `/tmp/rendered/${input.videoId}.mp4` };
+        }
+      },
       createWorker: (name, processor, options) => {
         registrations.push({ name, processor, options });
         return { close: async () => undefined };
@@ -47,7 +52,7 @@ describe("createBatchWorker", () => {
 
     const result = await registrations[0].processor({ name: PROCESS_BATCH_JOB, data: { batchId: "batch-1" } });
 
-    expect(result).toMatchObject({ status: "validating" });
-    expect(saved.at(-1)).toMatchObject({ status: "validating" });
+    expect(result).toMatchObject({ status: "zipping" });
+    expect(saved.at(-1)).toMatchObject({ status: "zipping" });
   });
 });
