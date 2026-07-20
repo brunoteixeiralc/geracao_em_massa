@@ -6,7 +6,7 @@
 
 **Architecture:** Use a TypeScript Node.js service with clean internal boundaries: bot adapter, workflow service, renderer planning, worker, storage, and persistence. Start with one Railway deployable service that can run webhook handling and a low-concurrency worker, while keeping modules split so bot and worker can become separate services after sustained processing load appears.
 
-**Tech Stack:** Node.js, TypeScript, grammY, BullMQ, Redis, Turso/libSQL, SQLite migrations, FFmpeg, Vitest, S3-compatible object storage, Docker, Railway.
+**Tech Stack:** Node.js, TypeScript, Fastify, grammY, BullMQ, Redis, Turso/libSQL, SQLite migrations, FFmpeg, Vitest, Zod, Pino, file-type, S3-compatible object storage, Docker, Railway.
 
 ---
 
@@ -20,6 +20,10 @@
 - `Dockerfile`: Railway deploy image with FFmpeg installed.
 - `src/index.ts`: app entrypoint.
 - `src/config/env.ts`: environment parsing and validation.
+- `src/logger.ts`: structured Pino logger with secret redaction.
+- `src/server/http.ts`: Fastify server, healthcheck, rate limiting, security headers, and Telegram webhook route.
+- `src/security/access.ts`: trusted Telegram user checks.
+- `src/security/media.ts`: media size and MIME validation helpers.
 - `src/bot/bot.ts`: grammY bot construction.
 - `src/bot/keyboards.ts`: inline keyboard builders.
 - `src/bot/panel.ts`: live Telegram panel rendering.
@@ -36,6 +40,8 @@
 - `db/migrations/001_initial_schema.sql`: SQLite-compatible database schema.
 - `tests/workflow/settings.test.ts`: settings tests.
 - `tests/workflow/batchWorkflow.test.ts`: workflow tests.
+- `tests/security/access.test.ts`: trusted-user access tests.
+- `tests/security/media.test.ts`: file limit and MIME validation tests.
 - `tests/bot/panel.test.ts`: panel rendering tests.
 - `tests/renderer/ffmpegPlan.test.ts`: FFmpeg planning tests.
 - `tests/db/repositories.test.ts`: Turso row mapping and repository tests with local SQLite file.
@@ -46,8 +52,21 @@
 - Each domain task starts with a failing unit test, then implementation, then passing verification.
 - Prefer pure modules for settings, workflow, panel text, keyboard intent parsing, FFmpeg argument planning, and database row mapping.
 - Integration work with Telegram, Redis, Turso, S3, and FFmpeg process execution begins only after the core unit tests pass.
-- Run `npm run test:unit` after every task that touches `src/workflow`, `src/bot`, `src/renderer`, or `src/db`.
+- Run `npm run test:unit` after every task that touches `src/workflow`, `src/bot`, `src/renderer`, `src/security`, or `src/db`.
 - Run `npm run test:coverage` before starting real Telegram/Railway staging verification.
+
+## Library And Security Choices
+
+- Use Fastify for production webhooks and healthchecks because it is fast, TypeScript-friendly, and has maintained security/rate-limit plugins.
+- Use grammY for Telegram because it is current with the Bot API, TypeScript-first, and supports webhook adapters.
+- Use BullMQ for durable background processing, retries, backoff, and worker concurrency control.
+- Use Turso/libSQL directly through `@libsql/client`; keep SQL explicit and parameterized.
+- Use Pino for structured JSON logging and redact secrets by path.
+- Use Zod for configuration and callback payload validation.
+- Use `file-type` and FFprobe together; MIME sniffing rejects obvious bad files early, FFprobe validates actual media streams.
+- Use `nanoid` for public batch/video IDs instead of sequential IDs.
+- Do not add a large web framework, ORM, or browser automation dependency to the MVP.
+- Run `npm audit --audit-level=high` before deployment commits.
 
 ## Task 1: Project Scaffold
 
@@ -80,23 +99,29 @@ Create `package.json`:
     "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
+    "@fastify/helmet": "^13.1.0",
+    "@fastify/rate-limit": "^11.1.0",
     "@aws-sdk/client-s3": "^3.614.0",
     "@aws-sdk/s3-request-presigner": "^3.614.0",
     "@grammyjs/runner": "^2.0.3",
     "@libsql/client": "^0.17.4",
     "archiver": "^7.0.1",
-    "bullmq": "^5.12.12",
+    "bullmq": "^5.79.3",
     "dotenv": "^16.4.5",
-    "grammy": "^1.28.0",
+    "fastify": "^5.10.0",
+    "file-type": "^22.0.1",
+    "grammy": "^1.45.1",
     "ioredis": "^5.4.1",
-    "zod": "^3.23.8"
+    "nanoid": "^6.0.0",
+    "pino": "^10.3.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20.14.12",
-    "@vitest/coverage-v8": "^2.0.4",
+    "@vitest/coverage-v8": "^4.1.10",
     "tsx": "^4.16.2",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.4"
+    "vitest": "^4.1.10"
   }
 }
 ```
@@ -134,7 +159,13 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     globals: true,
-    include: ["tests/**/*.test.ts"]
+    include: ["tests/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["src/workflow/**/*.ts", "src/bot/**/*.ts", "src/renderer/**/*.ts", "src/security/**/*.ts", "src/db/**/*.ts"],
+      exclude: ["src/index.ts", "src/db/migrate.ts"]
+    }
   }
 });
 ```
@@ -156,7 +187,11 @@ Create `.env.example`:
 
 ```env
 NODE_ENV=development
+PORT=3000
 TELEGRAM_BOT_TOKEN=replace_me
+TELEGRAM_WEBHOOK_SECRET=replace_me_with_random_32_byte_value
+TRUSTED_TELEGRAM_USER_IDS=123456789
+PUBLIC_WEBHOOK_BASE_URL=https://your-railway-domain.up.railway.app
 TURSO_DATABASE_URL=libsql://database-org.turso.io
 TURSO_AUTH_TOKEN=replace_me
 REDIS_URL=redis://localhost:6379
@@ -219,7 +254,11 @@ describe("parseEnv", () => {
   it("parses valid environment values", () => {
     const env = parseEnv({
       NODE_ENV: "test",
+      PORT: "3000",
       TELEGRAM_BOT_TOKEN: "token",
+      TELEGRAM_WEBHOOK_SECRET: "test-webhook-secret-32-bytes",
+      TRUSTED_TELEGRAM_USER_IDS: "123,456",
+      PUBLIC_WEBHOOK_BASE_URL: "https://bot.example.com",
       TURSO_DATABASE_URL: "file:/tmp/reels-bot-test.db",
       TURSO_AUTH_TOKEN: "token",
       REDIS_URL: "redis://localhost:6379",
@@ -261,7 +300,11 @@ import { z } from "zod";
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  PORT: z.coerce.number().int().positive().default(3000),
   TELEGRAM_BOT_TOKEN: z.string().min(1),
+  TELEGRAM_WEBHOOK_SECRET: z.string().min(16),
+  TRUSTED_TELEGRAM_USER_IDS: z.string().min(1),
+  PUBLIC_WEBHOOK_BASE_URL: z.string().url(),
   TURSO_DATABASE_URL: z.string().min(1),
   TURSO_AUTH_TOKEN: z.string().min(1),
   REDIS_URL: z.string().startsWith("redis"),
@@ -290,7 +333,11 @@ export function parseEnv(source: NodeJS.ProcessEnv) {
 
   return {
     nodeEnv: result.data.NODE_ENV,
+    port: result.data.PORT,
     telegramBotToken: result.data.TELEGRAM_BOT_TOKEN,
+    telegramWebhookSecret: result.data.TELEGRAM_WEBHOOK_SECRET,
+    trustedTelegramUserIds: result.data.TRUSTED_TELEGRAM_USER_IDS.split(",").map((id) => id.trim()).filter(Boolean),
+    publicWebhookBaseUrl: result.data.PUBLIC_WEBHOOK_BASE_URL,
     tursoDatabaseUrl: result.data.TURSO_DATABASE_URL,
     tursoAuthToken: result.data.TURSO_AUTH_TOKEN,
     redisUrl: result.data.REDIS_URL,
@@ -337,6 +384,143 @@ Expected: PASS.
 ```bash
 git add src/config/env.ts src/index.ts tests/config/env.test.ts
 git commit -m "chore: validate service environment"
+```
+
+## Task 2A: Security Baseline
+
+**Files:**
+- Create: `src/security/access.ts`
+- Create: `src/security/media.ts`
+- Test: `tests/security/access.test.ts`
+- Test: `tests/security/media.test.ts`
+
+- [ ] **Step 1: Write failing access tests**
+
+Create `tests/security/access.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { isTrustedTelegramUser } from "../../src/security/access.js";
+
+describe("isTrustedTelegramUser", () => {
+  it("accepts a trusted user ID", () => {
+    expect(isTrustedTelegramUser("123", ["123", "456"])).toBe(true);
+  });
+
+  it("rejects an unknown user ID", () => {
+    expect(isTrustedTelegramUser("999", ["123", "456"])).toBe(false);
+  });
+});
+```
+
+- [ ] **Step 2: Write failing media validation tests**
+
+Create `tests/security/media.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { validateMediaInput } from "../../src/security/media.js";
+
+describe("validateMediaInput", () => {
+  it("accepts an MP4 under the configured size limit", () => {
+    expect(
+      validateMediaInput({
+        fileName: "clip.mp4",
+        mimeType: "video/mp4",
+        sizeBytes: 1024,
+        maxInputBytes: 20 * 1024 * 1024
+      })
+    ).toEqual({ ok: true });
+  });
+
+  it("rejects a file above the configured size limit", () => {
+    expect(
+      validateMediaInput({
+        fileName: "clip.mp4",
+        mimeType: "video/mp4",
+        sizeBytes: 25 * 1024 * 1024,
+        maxInputBytes: 20 * 1024 * 1024
+      })
+    ).toEqual({ ok: false, reason: "Arquivo maior que 20 MB." });
+  });
+
+  it("rejects unsupported MIME types", () => {
+    expect(
+      validateMediaInput({
+        fileName: "clip.exe",
+        mimeType: "application/octet-stream",
+        sizeBytes: 1024,
+        maxInputBytes: 20 * 1024 * 1024
+      })
+    ).toEqual({ ok: false, reason: "Envie apenas videos MP4, MOV ou WEBM." });
+  });
+});
+```
+
+- [ ] **Step 3: Run tests to verify failure**
+
+Run: `npm test -- tests/security/access.test.ts tests/security/media.test.ts`
+
+Expected: FAIL because `src/security/access.ts` and `src/security/media.ts` do not exist.
+
+- [ ] **Step 4: Implement access checks**
+
+Create `src/security/access.ts`:
+
+```ts
+export function isTrustedTelegramUser(telegramUserId: string | undefined, trustedUserIds: string[]) {
+  if (!telegramUserId) {
+    return false;
+  }
+
+  return trustedUserIds.includes(telegramUserId);
+}
+```
+
+- [ ] **Step 5: Implement media validation**
+
+Create `src/security/media.ts`:
+
+```ts
+const ACCEPTED_VIDEO_MIME_TYPES = new Set(["video/mp4", "video/quicktime", "video/webm"]);
+
+export type MediaInput = {
+  fileName: string;
+  mimeType: string | undefined;
+  sizeBytes: number | undefined;
+  maxInputBytes: number;
+};
+
+export type MediaValidationResult = { ok: true } | { ok: false; reason: string };
+
+export function validateMediaInput(input: MediaInput): MediaValidationResult {
+  if (typeof input.sizeBytes === "number" && input.sizeBytes > input.maxInputBytes) {
+    return { ok: false, reason: "Arquivo maior que 20 MB." };
+  }
+
+  if (!input.mimeType || !ACCEPTED_VIDEO_MIME_TYPES.has(input.mimeType)) {
+    return { ok: false, reason: "Envie apenas videos MP4, MOV ou WEBM." };
+  }
+
+  return { ok: true };
+}
+```
+
+- [ ] **Step 6: Verify security unit tests**
+
+Run: `npm test -- tests/security/access.test.ts tests/security/media.test.ts`
+
+Expected: PASS.
+
+Run: `npm run test:unit`
+
+Expected: PASS.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/security/access.ts src/security/media.ts tests/security/access.test.ts tests/security/media.test.ts
+git commit -m "feat: add security validation baseline"
 ```
 
 ## Task 3: Domain Statuses, Templates, and Settings
@@ -1386,6 +1570,8 @@ git commit -m "feat: add queue and worker skeleton"
 
 **Files:**
 - Create: `src/bot/bot.ts`
+- Create: `src/logger.ts`
+- Create: `src/server/http.ts`
 - Modify: `src/index.ts`
 
 - [ ] **Step 1: Implement bot construction**
@@ -1395,13 +1581,29 @@ Create `src/bot/bot.ts`:
 ```ts
 import { Bot } from "grammy";
 import type { Queue } from "bullmq";
+import { nanoid } from "nanoid";
 import { createDraftBatch } from "../workflow/batchWorkflow.js";
 import type { ProcessBatchJob } from "../queue/queue.js";
+import { isTrustedTelegramUser } from "../security/access.js";
 import { renderBatchPanel } from "./panel.js";
 import { templateKeyboard } from "./keyboards.js";
 
-export function createBot(token: string, queue: Queue<ProcessBatchJob>) {
+export function createBot(token: string, queue: Queue<ProcessBatchJob>, trustedTelegramUserIds: string[]) {
   const bot = new Bot(token);
+
+  bot.catch((error) => {
+    console.error("Telegram middleware failed", error.error);
+  });
+
+  bot.use(async (ctx, next) => {
+    const telegramUserId = ctx.from?.id ? String(ctx.from.id) : undefined;
+    if (!isTrustedTelegramUser(telegramUserId, trustedTelegramUserIds)) {
+      await ctx.reply("Acesso nao autorizado.");
+      return;
+    }
+
+    await next();
+  });
 
   bot.command("start", async (ctx) => {
     await ctx.reply("Envie /novo_lote para criar Reels em massa.");
@@ -1409,7 +1611,7 @@ export function createBot(token: string, queue: Queue<ProcessBatchJob>) {
 
   bot.command("novo_lote", async (ctx) => {
     const telegramUserId = String(ctx.from?.id ?? "unknown");
-    const batch = createDraftBatch({ id: String(Date.now()), telegramUserId });
+    const batch = createDraftBatch({ id: nanoid(), telegramUserId });
     await ctx.reply(renderBatchPanel(batch), { reply_markup: templateKeyboard() });
   });
 
@@ -1418,7 +1620,16 @@ export function createBot(token: string, queue: Queue<ProcessBatchJob>) {
   });
 
   bot.callbackQuery("batch:process", async (ctx) => {
-    await queue.add("process", { batchId: String(Date.now()) });
+    await queue.add(
+      "process",
+      { batchId: nanoid() },
+      {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 1000 },
+        removeOnComplete: true,
+        removeOnFail: 100
+      }
+    );
     await ctx.answerCallbackQuery("Lote enviado para processamento.");
   });
 
@@ -1426,7 +1637,69 @@ export function createBot(token: string, queue: Queue<ProcessBatchJob>) {
 }
 ```
 
-- [ ] **Step 2: Wire app startup**
+- [ ] **Step 2: Add structured logger**
+
+Create `src/logger.ts`:
+
+```ts
+import pino from "pino";
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL ?? "info",
+  redact: {
+    paths: [
+      "telegramBotToken",
+      "telegramWebhookSecret",
+      "tursoAuthToken",
+      "s3AccessKeyId",
+      "s3SecretAccessKey",
+      "*.token",
+      "*.authToken",
+      "*.signedUrl",
+      "*.telegramFileUrl"
+    ],
+    censor: "[redacted]"
+  }
+});
+```
+
+- [ ] **Step 3: Add Fastify webhook server**
+
+Create `src/server/http.ts`:
+
+```ts
+import Fastify from "fastify";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
+import { webhookCallback, type Bot } from "grammy";
+import type { AppEnv } from "../config/env.js";
+import { logger } from "../logger.js";
+
+export async function createHttpServer(bot: Bot, env: AppEnv) {
+  const app = Fastify({ loggerInstance: logger });
+
+  await app.register(helmet);
+  await app.register(rateLimit, {
+    max: 120,
+    timeWindow: "1 minute"
+  });
+
+  app.get("/health", async () => ({ ok: true }));
+
+  app.post("/telegram/webhook", async (request, reply) => {
+    const secret = request.headers["x-telegram-bot-api-secret-token"];
+    if (secret !== env.telegramWebhookSecret) {
+      return reply.status(401).send({ error: "unauthorized" });
+    }
+
+    return webhookCallback(bot, "fastify")(request, reply);
+  });
+
+  return app;
+}
+```
+
+- [ ] **Step 4: Wire app startup**
 
 Modify `src/index.ts`:
 
@@ -1435,32 +1708,39 @@ import "dotenv/config";
 import { parseEnv } from "./config/env.js";
 import { createBot } from "./bot/bot.js";
 import { createBatchQueue, createBatchWorker, createRedisConnection } from "./queue/queue.js";
+import { logger } from "./logger.js";
+import { createHttpServer } from "./server/http.js";
 import { processBatch } from "./worker/processBatch.js";
 
 const env = parseEnv(process.env);
 const redis = createRedisConnection(env.redisUrl);
 const queue = createBatchQueue(redis);
 const worker = createBatchWorker(redis, processBatch, env.workerConcurrency);
-const bot = createBot(env.telegramBotToken, queue);
+const bot = createBot(env.telegramBotToken, queue, env.trustedTelegramUserIds);
+const server = await createHttpServer(bot, env);
 
 worker.on("failed", (job, error) => {
-  console.error(`Batch job ${job?.id ?? "unknown"} failed`, error);
+  logger.error({ jobId: job?.id, error }, "Batch job failed");
 });
 
-await bot.start();
+await bot.api.setWebhook(`${env.publicWebhookBaseUrl}/telegram/webhook`, {
+  secret_token: env.telegramWebhookSecret
+});
+
+await server.listen({ port: env.port, host: "0.0.0.0" });
 ```
 
-- [ ] **Step 3: Verify**
+- [ ] **Step 5: Verify**
 
 Run: `npm run build`
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/bot/bot.ts src/index.ts
-git commit -m "feat: add telegram bot adapter"
+git add src/bot/bot.ts src/logger.ts src/server/http.ts src/index.ts
+git commit -m "feat: add secure telegram webhook"
 ```
 
 ## Task 10: Railway Deployment Files

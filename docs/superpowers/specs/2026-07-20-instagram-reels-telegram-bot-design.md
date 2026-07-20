@@ -106,13 +106,31 @@ For Railway, the simplest deployment can start as one Node.js service running bo
 
 - Runtime: Node.js with TypeScript.
 - Telegram framework: grammY.
+- HTTP server: Fastify for Telegram webhook, healthcheck, and minimal internal endpoints.
+- HTTP hardening: `@fastify/helmet` and `@fastify/rate-limit`.
+- Logging: Pino structured JSON logs with token/secret redaction.
 - Video engine: FFmpeg installed in the deploy image.
 - Queue: BullMQ with Redis.
 - Database: Turso/libSQL, using SQLite-compatible schema.
+- Validation: Zod for environment variables, callback payloads, and trusted config.
+- Media sniffing: `file-type` plus FFprobe validation before FFmpeg processing.
 - Storage: S3-compatible object storage. Prefer Railway storage buckets if available in the target project; otherwise use Cloudflare R2.
 - Deployment: one Railway service from GitHub for the MVP, with a Dockerfile so FFmpeg availability is explicit.
 
 Node.js is a good fit because Telegram bot handling, queues, storage SDKs, and Railway deployment are straightforward. FFmpeg remains the actual video engine.
+
+## Reliability And Security Priorities
+
+- Prefer maintained libraries with TypeScript support, active releases, and low runtime overhead.
+- Run Telegram through webhooks on Railway instead of long polling in production.
+- Require Telegram webhook secret validation so random public requests cannot trigger bot updates.
+- Support an allowlist of trusted Telegram user IDs for the MVP.
+- Enforce batch size, input file size, MIME type, duration, and output size limits before expensive processing.
+- Use FFmpeg through argument arrays, never shell-concatenated commands.
+- Keep worker concurrency low by default and use BullMQ attempts with exponential backoff for retryable failures.
+- Redact bot tokens, Turso auth tokens, S3 secrets, signed URLs, and Telegram file URLs from logs.
+- Keep real failures visible to the user after bounded retries; do not silently hide Turso, Redis, Telegram, storage, or FFmpeg failures.
+- Run dependency audit and unit tests before staging deploys.
 
 ## Data Model
 
