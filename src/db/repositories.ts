@@ -42,6 +42,7 @@ export function mapBatchRow(row: BatchRow): Batch {
     telegramUserId: row.telegram_user_id,
     status: row.status as BatchStatus,
     templateId: row.template_id,
+    outputZipUrl: row.output_zip_url,
     settings: JSON.parse(row.settings_json) as BatchSettings,
     videos: []
   };
@@ -55,7 +56,8 @@ export function mapVideoRow(row: VideoRow): BatchVideo {
     sizeBytes: row.size_bytes,
     status: row.status as VideoStatus,
     inputPath: row.input_path,
-    outputPath: row.output_path
+    outputPath: row.output_path,
+    outputUrl: row.output_url
   };
 }
 
@@ -142,17 +144,18 @@ export class LibsqlBatchRepository {
         SET template_id = ?,
             status = ?,
             settings_json = ?,
+            output_zip_url = ?,
             updated_at = datetime('now')
         WHERE id = ?
       `,
-      args: [batch.templateId, batch.status, JSON.stringify(batch.settings), batch.id]
+      args: [batch.templateId, batch.status, JSON.stringify(batch.settings), batch.outputZipUrl ?? null, batch.id]
     });
 
     for (const video of batch.videos) {
       await this.client.execute({
         sql: `
-          INSERT INTO videos (id, batch_id, telegram_file_id, original_file_name, size_bytes, status, input_path, output_path)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO videos (id, batch_id, telegram_file_id, original_file_name, size_bytes, status, input_path, output_path, output_url)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             telegram_file_id = excluded.telegram_file_id,
             original_file_name = excluded.original_file_name,
@@ -160,6 +163,7 @@ export class LibsqlBatchRepository {
             status = excluded.status,
             input_path = excluded.input_path,
             output_path = excluded.output_path,
+            output_url = excluded.output_url,
             updated_at = datetime('now')
         `,
         args: [
@@ -170,7 +174,8 @@ export class LibsqlBatchRepository {
           video.sizeBytes,
           video.status,
           video.inputPath ?? null,
-          video.outputPath ?? null
+          video.outputPath ?? null,
+          video.outputUrl ?? null
         ]
       });
     }

@@ -34,8 +34,8 @@ Escopo principal:
 6. O bot cria o lote, salva o estado no Turso e envia para a fila.
 7. O worker baixa os arquivos originais do Telegram para `WORK_DIR`.
 8. O worker valida os caminhos locais e renderiza os videos com FFprobe/FFmpeg.
-9. O painel do Telegram vai sendo atualizado conforme cada fase avanca.
-10. O bot entrega os Reels prontos e tambem um `.zip` com o lote completo.
+9. O worker cria o ZIP, envia MP4s/ZIP para storage S3/R2 e salva as URLs no Turso.
+10. O bot entrega os Reels prontos quando couberem no limite do Telegram e sempre envia o link do `.zip`.
 
 Comandos iniciais:
 
@@ -58,6 +58,9 @@ Fundacao tecnica do MVP ja preparada:
 - fila BullMQ para enfileirar lotes;
 - worker inicial para baixar videos do Telegram e renderizar MP4s locais;
 - executor FFprobe/FFmpeg sem shell para gerar Reels 9:16;
+- empacotamento ZIP dos videos renderizados;
+- upload S3/R2 de MP4s e ZIP;
+- entrega final pelo Telegram com videos individuais e link do ZIP;
 - schema inicial do banco Turso/libSQL;
 - repositorios de persistencia;
 - testes unitarios das regras principais;
@@ -211,7 +214,7 @@ npm run start:worker
 No Railway, o ideal e ter dois services usando o mesmo repositorio:
 
 - `web`: recebe webhooks do Telegram e enfileira lotes;
-- `worker`: consome a fila BullMQ, baixa os arquivos do Telegram, valida duracao com FFprobe e renderiza MP4s com FFmpeg.
+- `worker`: consome a fila BullMQ, baixa os arquivos do Telegram, valida duracao com FFprobe, renderiza MP4s, cria ZIP, faz upload S3/R2 e entrega o resultado no Telegram.
 
 O `Dockerfile` usa `npm run start` como comando padrao para o service `web`.
 No service `worker`, configure o comando inicial como:
@@ -291,8 +294,11 @@ src/
   bot/          Painel e teclados do Telegram
   config/       Variaveis de ambiente tipadas
   db/           Cliente Turso, migrations e repositorios
+  delivery/     Entrega final pelo Telegram
+  packager/     Criacao de ZIPs do lote
   renderer/     Planejamento e execucao de renderizacao com FFprobe/FFmpeg
   security/     Acesso autorizado e validacao de midia
+  storage/      Upload S3/R2 e URLs publicas
   templates/    Templates fixos
   workflow/     Regras de lote, ajustes e status
 
@@ -300,8 +306,11 @@ tests/
   bot/
   config/
   db/
+  delivery/
+  packager/
   renderer/
   security/
+  storage/
   workflow/
 
 db/
@@ -313,8 +322,6 @@ docs/
 
 ## Proximas Etapas
 
-- Criar ZIP dos videos renderizados.
-- Salvar resultados no storage S3/R2.
-- Entregar videos e ZIP pelo Telegram.
 - Expandir painel vivo com progresso detalhado por fase.
 - Adicionar testes de integracao com videos pequenos reais no FFmpeg.
+- Fazer smoke test em staging no Railway com Telegram, Redis, Turso e S3/R2 reais.

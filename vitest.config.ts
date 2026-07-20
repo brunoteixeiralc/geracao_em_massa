@@ -15,7 +15,10 @@ export default defineConfig({
         "src/security/**/*.ts",
         "src/server/**/*.ts",
         "src/worker/**/*.ts",
-        "src/db/**/*.ts"
+        "src/db/**/*.ts",
+        "src/packager/**/*.ts",
+        "src/storage/**/*.ts",
+        "src/delivery/**/*.ts"
       ],
       exclude: ["src/index.ts", "src/db/migrate.ts"]
     }

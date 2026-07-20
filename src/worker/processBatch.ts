@@ -30,11 +30,51 @@ export type WorkerRenderer = {
   }>;
 };
 
+export type WorkerPackager = {
+  createBatchZip(input: {
+    batchId: string;
+    videos: Array<{
+      id: string;
+      outputPath?: string | null;
+    }>;
+  }): Promise<{
+    zipPath: string;
+    fileName: string;
+  }>;
+};
+
+export type WorkerStorage = {
+  uploadFile(input: {
+    filePath: string;
+    key: string;
+    contentType: string;
+  }): Promise<{
+    key: string;
+    url: string;
+  }>;
+};
+
+export type WorkerDelivery = {
+  deliverBatch(input: {
+    chatId: string;
+    zipUrl: string;
+    videos: Array<{
+      id: string;
+      fileName: string;
+      outputPath?: string | null;
+      outputUrl?: string | null;
+    }>;
+  }): Promise<void>;
+};
+
 export async function processQueuedBatch(options: {
   batchId: string;
   store: WorkerBatchStore;
   downloader: WorkerDownloader;
   renderer: WorkerRenderer;
+  packager: WorkerPackager;
+  storage: WorkerStorage;
+  delivery: WorkerDelivery;
 }) {
   const batch = await options.store.findBatchById(options.batchId);
   if (!batch) {
@@ -129,6 +169,62 @@ export async function processQueuedBatch(options: {
   currentBatch = { ...currentBatch, status: "zipping" };
   await options.store.saveBatch(currentBatch);
 
+  const readyVideos = currentBatch.videos.filter((video) => video.status === "ready");
+  const zip = await options.packager.createBatchZip({
+    batchId: currentBatch.id,
+    videos: readyVideos
+  });
+
+  try {
+    currentBatch = { ...currentBatch, status: "uploading" };
+    await options.store.saveBatch(currentBatch);
+
+    for (const video of readyVideos) {
+      if (!video.outputPath) {
+        continue;
+      }
+
+      const upload = await options.storage.uploadFile({
+        filePath: video.outputPath,
+        key: `batches/${sanitizeStorageSegment(currentBatch.id)}/videos/${sanitizeStorageSegment(video.id)}.mp4`,
+        contentType: "video/mp4"
+      });
+
+      currentBatch = updateVideo(currentBatch, video.id, { outputUrl: upload.url });
+      await options.store.saveBatch(currentBatch);
+    }
+
+    const zipUpload = await options.storage.uploadFile({
+      filePath: zip.zipPath,
+      key: `batches/${sanitizeStorageSegment(currentBatch.id)}/${sanitizeStorageSegment(zip.fileName)}`,
+      contentType: "application/zip"
+    });
+
+    currentBatch = {
+      ...currentBatch,
+      outputZipUrl: zipUpload.url,
+      status: "delivering"
+    };
+    await options.store.saveBatch(currentBatch);
+
+    await options.delivery.deliverBatch({
+      chatId: currentBatch.telegramUserId,
+      zipUrl: zipUpload.url,
+      videos: currentBatch.videos
+    });
+
+    currentBatch = {
+      ...currentBatch,
+      status: "completed",
+      videos: currentBatch.videos.map((video) => (video.status === "ready" ? { ...video, status: "delivered" } : video))
+    };
+    await options.store.saveBatch(currentBatch);
+  } catch (error) {
+    currentBatch = { ...currentBatch, status: "failed" };
+    await options.store.saveBatch(currentBatch);
+    throw error;
+  }
+
   return currentBatch;
 }
 
@@ -137,4 +233,9 @@ function updateVideo(batch: Batch, videoId: string, patch: Partial<Batch["videos
     ...batch,
     videos: batch.videos.map((video) => (video.id === videoId ? { ...video, ...patch } : video))
   };
+}
+
+function sanitizeStorageSegment(value: string) {
+  const safeValue = value.replace(/[^a-zA-Z0-9_.-]+/g, "-").replace(/^-+|-+$/g, "");
+  return safeValue || "file";
 }

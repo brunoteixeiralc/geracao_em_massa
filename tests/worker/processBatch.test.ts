@@ -16,7 +16,7 @@ class MemoryWorkerStore implements WorkerBatchStore {
 }
 
 describe("processQueuedBatch", () => {
-  it("downloads and renders queued videos before moving the batch to zipping", async () => {
+  it("downloads, renders, uploads, delivers and completes queued videos", async () => {
     const store = new MemoryWorkerStore();
     store.batches.push({
       id: "batch-1",
@@ -31,6 +31,8 @@ describe("processQueuedBatch", () => {
     });
     const downloadCalls: string[] = [];
     const renderCalls: string[] = [];
+    const uploadedKeys: string[] = [];
+    const deliveredZipUrls: string[] = [];
 
     const result = await processQueuedBatch({
       batchId: "batch-1",
@@ -46,16 +48,52 @@ describe("processQueuedBatch", () => {
           renderCalls.push(`${input.videoId}:${input.inputPath}`);
           return { outputPath: `/tmp/rendered/${input.videoId}.mp4` };
         }
+      },
+      packager: {
+        createBatchZip: async (input) => {
+          expect(input.videos.map((video) => video.id)).toEqual(["video-1", "video-2"]);
+          return { zipPath: "/tmp/rendered/batch-1.zip", fileName: "batch-1.zip" };
+        }
+      },
+      storage: {
+        uploadFile: async (input) => {
+          uploadedKeys.push(input.key);
+          return { key: input.key, url: `https://files.example.com/${input.key}` };
+        }
+      },
+      delivery: {
+        deliverBatch: async (input) => {
+          deliveredZipUrls.push(input.zipUrl);
+        }
       }
     });
 
-    expect(result.status).toBe("zipping");
-    expect(result.videos.map((video) => [video.id, video.status, video.inputPath, video.outputPath])).toEqual([
-      ["video-1", "ready", "/tmp/video-1.mp4", "/tmp/rendered/video-1.mp4"],
-      ["video-2", "ready", "/tmp/video-2.mp4", "/tmp/rendered/video-2.mp4"]
+    expect(result.status).toBe("completed");
+    expect(result.outputZipUrl).toBe("https://files.example.com/batches/batch-1/batch-1.zip");
+    expect(result.videos.map((video) => [video.id, video.status, video.inputPath, video.outputPath, video.outputUrl])).toEqual([
+      [
+        "video-1",
+        "delivered",
+        "/tmp/video-1.mp4",
+        "/tmp/rendered/video-1.mp4",
+        "https://files.example.com/batches/batch-1/videos/video-1.mp4"
+      ],
+      [
+        "video-2",
+        "delivered",
+        "/tmp/video-2.mp4",
+        "/tmp/rendered/video-2.mp4",
+        "https://files.example.com/batches/batch-1/videos/video-2.mp4"
+      ]
     ]);
     expect(downloadCalls).toEqual(["video-1", "video-2"]);
     expect(renderCalls).toEqual(["video-1:/tmp/video-1.mp4", "video-2:/tmp/video-2.mp4"]);
+    expect(uploadedKeys).toEqual([
+      "batches/batch-1/videos/video-1.mp4",
+      "batches/batch-1/videos/video-2.mp4",
+      "batches/batch-1/batch-1.zip"
+    ]);
+    expect(deliveredZipUrls).toEqual(["https://files.example.com/batches/batch-1/batch-1.zip"]);
     expect(store.batches.map((batch) => batch.status)).toEqual([
       "queued",
       "downloading",
@@ -69,7 +107,12 @@ describe("processQueuedBatch", () => {
       "rendering",
       "rendering",
       "rendering",
-      "zipping"
+      "zipping",
+      "uploading",
+      "uploading",
+      "uploading",
+      "delivering",
+      "completed"
     ]);
   });
 
@@ -96,6 +139,21 @@ describe("processQueuedBatch", () => {
         renderer: {
           renderVideo: async () => {
             throw new Error("should not render");
+          }
+        },
+        packager: {
+          createBatchZip: async () => {
+            throw new Error("should not package");
+          }
+        },
+        storage: {
+          uploadFile: async () => {
+            throw new Error("should not upload");
+          }
+        },
+        delivery: {
+          deliverBatch: async () => {
+            throw new Error("should not deliver");
           }
         }
       })
@@ -135,13 +193,25 @@ describe("processQueuedBatch", () => {
 
           return { outputPath: `/tmp/rendered/${input.videoId}.mp4` };
         }
+      },
+      packager: {
+        createBatchZip: async (input) => {
+          expect(input.videos.map((video) => video.id)).toEqual(["video-2"]);
+          return { zipPath: "/tmp/rendered/batch-1.zip", fileName: "batch-1.zip" };
+        }
+      },
+      storage: {
+        uploadFile: async (input) => ({ key: input.key, url: `https://files.example.com/${input.key}` })
+      },
+      delivery: {
+        deliverBatch: async () => undefined
       }
     });
 
-    expect(result.status).toBe("zipping");
-    expect(result.videos.map((video) => [video.id, video.status, video.outputPath])).toEqual([
-      ["video-1", "failed", undefined],
-      ["video-2", "ready", "/tmp/rendered/video-2.mp4"]
+    expect(result.status).toBe("completed");
+    expect(result.videos.map((video) => [video.id, video.status, video.outputPath, video.outputUrl])).toEqual([
+      ["video-1", "failed", undefined, undefined],
+      ["video-2", "delivered", "/tmp/rendered/video-2.mp4", "https://files.example.com/batches/batch-1/videos/video-2.mp4"]
     ]);
   });
 });

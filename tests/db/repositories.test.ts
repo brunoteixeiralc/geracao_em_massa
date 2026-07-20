@@ -19,7 +19,7 @@ describe("db repository mappers", () => {
       settings_json: JSON.stringify(DEFAULT_BATCH_SETTINGS),
       status_panel_chat_id: "123",
       status_panel_message_id: "456",
-      output_zip_url: null,
+      output_zip_url: "https://files.example.com/batch-1.zip",
       created_at: "2026-07-20 10:00:00",
       updated_at: "2026-07-20 10:00:00"
     });
@@ -29,6 +29,7 @@ describe("db repository mappers", () => {
       telegramUserId: "123",
       status: "settings",
       templateId: "humor-01",
+      outputZipUrl: "https://files.example.com/batch-1.zip",
       settings: DEFAULT_BATCH_SETTINGS,
       videos: []
     });
@@ -57,7 +58,8 @@ describe("db repository mappers", () => {
       sizeBytes: 1234,
       status: "ready",
       inputPath: "/tmp/one.mp4",
-      outputPath: "/tmp/out.mp4"
+      outputPath: "/tmp/out.mp4",
+      outputUrl: "https://files.example.com/one.mp4"
     });
   });
 });
@@ -79,10 +81,12 @@ describe("LibsqlBatchRepository", () => {
         {
           ...batch.videos[0],
           inputPath: ".data/reels-bot/batch-1/video-1.mp4",
-          outputPath: ".data/reels-bot/batch-1/rendered/video-1.mp4"
+          outputPath: ".data/reels-bot/batch-1/rendered/video-1.mp4",
+          outputUrl: "https://files.example.com/video-1.mp4"
         }
       ]
     };
+    batch = { ...batch, outputZipUrl: "https://files.example.com/batch-1.zip" };
     await repository.saveBatch(batch);
 
     const activeBatch = await repository.findBatchById("batch-1");
@@ -92,6 +96,7 @@ describe("LibsqlBatchRepository", () => {
       telegramUserId: "123",
       status: "receiving",
       templateId: "humor-01",
+      outputZipUrl: "https://files.example.com/batch-1.zip",
       videos: [
         {
           id: "video-1",
@@ -100,7 +105,8 @@ describe("LibsqlBatchRepository", () => {
           sizeBytes: 1024,
           status: "received",
           inputPath: ".data/reels-bot/batch-1/video-1.mp4",
-          outputPath: ".data/reels-bot/batch-1/rendered/video-1.mp4"
+          outputPath: ".data/reels-bot/batch-1/rendered/video-1.mp4",
+          outputUrl: "https://files.example.com/video-1.mp4"
         }
       ]
     });

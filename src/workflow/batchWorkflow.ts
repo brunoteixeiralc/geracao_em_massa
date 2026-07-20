@@ -9,6 +9,7 @@ export type BatchVideo = {
   status: VideoStatus;
   inputPath?: string | null;
   outputPath?: string | null;
+  outputUrl?: string | null;
 };
 
 export type Batch = {
@@ -16,6 +17,7 @@ export type Batch = {
   telegramUserId: string;
   status: BatchStatus;
   templateId: string | null;
+  outputZipUrl?: string | null;
   settings: BatchSettings;
   videos: BatchVideo[];
 };
@@ -26,6 +28,7 @@ export function createDraftBatch(input: { id: string; telegramUserId: string }):
     telegramUserId: input.telegramUserId,
     status: "draft",
     templateId: null,
+    outputZipUrl: null,
     settings: DEFAULT_BATCH_SETTINGS,
     videos: []
   };

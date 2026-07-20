@@ -41,6 +41,21 @@ describe("createBatchWorker", () => {
           return { outputPath: `/tmp/rendered/${input.videoId}.mp4` };
         }
       },
+      packager: {
+        async createBatchZip() {
+          return { zipPath: "/tmp/rendered/batch-1.zip", fileName: "batch-1.zip" };
+        }
+      },
+      storage: {
+        async uploadFile(input) {
+          return { key: input.key, url: `https://files.example.com/${input.key}` };
+        }
+      },
+      delivery: {
+        async deliverBatch() {
+          return undefined;
+        }
+      },
       createWorker: (name, processor, options) => {
         registrations.push({ name, processor, options });
         return { close: async () => undefined };
@@ -52,7 +67,7 @@ describe("createBatchWorker", () => {
 
     const result = await registrations[0].processor({ name: PROCESS_BATCH_JOB, data: { batchId: "batch-1" } });
 
-    expect(result).toMatchObject({ status: "zipping" });
-    expect(saved.at(-1)).toMatchObject({ status: "zipping" });
+    expect(result).toMatchObject({ status: "completed" });
+    expect(saved.at(-1)).toMatchObject({ status: "completed" });
   });
 });
