@@ -241,6 +241,7 @@ O repositorio foi pensado para usar bastante o GitHub:
 Veja tambem:
 
 - `docs/github-workflow.md`
+- `docs/railway-staging.md`
 - `SECURITY.md`
 
 ## Releases
@@ -319,6 +320,7 @@ db/
 
 docs/
   github-workflow.md
+  railway-staging.md
 ```
 
 ## Proximas Etapas
