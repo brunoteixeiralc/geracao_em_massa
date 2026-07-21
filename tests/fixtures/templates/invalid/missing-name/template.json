@@ -1,0 +1,12 @@
+{
+  "id": "missing-name",
+  "previewPath": "tests/fixtures/templates/invalid/missing-name/preview.svg",
+  "canvas": { "width": 1080, "height": 1920 },
+  "videoBox": { "x": 90, "y": 620, "width": 900, "height": 1120 },
+  "header": {
+    "avatarPath": "tests/fixtures/templates/invalid/missing-name/avatar.svg",
+    "displayName": "Broken Template",
+    "handle": "@broken",
+    "headline": "This template is intentionally invalid"
+  }
+}

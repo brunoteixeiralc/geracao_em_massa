@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="270" height="480" viewBox="0 0 270 480">
+  <rect width="270" height="480" fill="#ffffff"/>
+  <rect x="24" y="155" width="222" height="280" fill="#111827"/>
+  <text x="135" y="76" text-anchor="middle" font-family="Arial" font-size="24" fill="#111827">Fixture B</text>
+</svg>

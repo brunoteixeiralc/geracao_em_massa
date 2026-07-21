@@ -302,6 +302,9 @@ src/
   templates/    Templates fixos
   workflow/     Regras de lote, ajustes e status
 
+assets/
+  templates/    Templates versionados com template.json, preview e avatar
+
 tests/
   bot/
   ci/
@@ -314,6 +317,7 @@ tests/
   security/
   server/
   storage/
+  templates/
   worker/
   workflow/
 
@@ -324,6 +328,22 @@ docs/
   github-workflow.md
   railway-staging.md
 ```
+
+## Templates
+
+Os templates fixos ficam versionados no GitHub em `assets/templates/<id>/template.json`. Cada pasta tambem deve conter os assets referenciados pelo JSON, como `avatar.svg` e `preview.svg`.
+
+Exemplo:
+
+```text
+assets/templates/
+  humor-crocodilo/
+    template.json
+    avatar.svg
+    preview.svg
+```
+
+O bot carrega automaticamente os templates validos dessa pasta. Se um `template.json` estiver invalido ou apontar para asset inexistente, os testes falham antes do deploy.
 
 ## Proximas Etapas
 

@@ -11,14 +11,14 @@ describe("batch workflow", () => {
   });
 
   it("moves to receiving after template selection", () => {
-    const batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-01");
+    const batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-crocodilo");
 
     expect(batch.status).toBe("receiving");
-    expect(batch.templateId).toBe("humor-01");
+    expect(batch.templateId).toBe("humor-crocodilo");
   });
 
   it("accepts up to the configured batch limit", () => {
-    let batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-01");
+    let batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-crocodilo");
     batch = receiveVideo(batch, { id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000 }, 1);
 
     expect(batch.videos).toHaveLength(1);
@@ -28,7 +28,7 @@ describe("batch workflow", () => {
   });
 
   it("queues a batch with videos", () => {
-    let batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-01");
+    let batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-crocodilo");
     batch = receiveVideo(batch, { id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000 }, 50);
     batch = openSettings(batch);
     batch = startProcessing(batch);
@@ -38,7 +38,7 @@ describe("batch workflow", () => {
   });
 
   it("requires the settings review before queueing", () => {
-    let batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-01");
+    let batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-crocodilo");
     batch = receiveVideo(batch, { id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000 }, 50);
 
     expect(() => startProcessing(batch)).toThrow("Cannot process before reviewing settings");

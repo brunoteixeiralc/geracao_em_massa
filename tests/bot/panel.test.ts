@@ -4,14 +4,14 @@ import { createDraftBatch, openSettings, receiveVideo, selectTemplate } from "..
 
 describe("renderBatchPanel", () => {
   it("shows receiving progress", () => {
-    let batch = selectTemplate(createDraftBatch({ id: "522", telegramUserId: "123" }), "humor-01");
+    let batch = selectTemplate(createDraftBatch({ id: "522", telegramUserId: "123" }), "humor-crocodilo");
     batch = receiveVideo(batch, { id: "v1", fileId: "f1", fileName: "one.mp4", sizeBytes: 1000 }, 50);
 
     expect(renderBatchPanel(batch)).toContain("Videos: 1/50 recebidos");
   });
 
   it("shows a full global settings review before processing", () => {
-    let batch = selectTemplate(createDraftBatch({ id: "522", telegramUserId: "123" }), "humor-01");
+    let batch = selectTemplate(createDraftBatch({ id: "522", telegramUserId: "123" }), "humor-crocodilo");
     batch = receiveVideo(batch, { id: "v1", fileId: "f1", fileName: "one.mp4", sizeBytes: 1000 }, 50);
     batch = receiveVideo(batch, { id: "v2", fileId: "f2", fileName: "two.mp4", sizeBytes: 1000 }, 50);
 
@@ -29,7 +29,7 @@ describe("renderBatchPanel", () => {
 
   it("shows live worker progress by phase", () => {
     const batch = {
-      ...selectTemplate(createDraftBatch({ id: "522", telegramUserId: "123" }), "humor-01"),
+      ...selectTemplate(createDraftBatch({ id: "522", telegramUserId: "123" }), "humor-crocodilo"),
       status: "rendering" as const,
       videos: [
         { id: "v1", fileId: "f1", fileName: "one.mp4", sizeBytes: 1000, status: "ready" as const },

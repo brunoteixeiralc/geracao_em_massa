@@ -1,0 +1,13 @@
+{
+  "id": "fixture-a",
+  "name": "Fixture A",
+  "previewPath": "tests/fixtures/templates/valid/fixture-a/preview.svg",
+  "canvas": { "width": 1080, "height": 1920 },
+  "videoBox": { "x": 90, "y": 620, "width": 900, "height": 1120 },
+  "header": {
+    "avatarPath": "tests/fixtures/templates/valid/fixture-a/avatar.svg",
+    "displayName": "Fixture A Channel",
+    "handle": "@fixturea",
+    "headline": "Fixture A headline"
+  }
+}

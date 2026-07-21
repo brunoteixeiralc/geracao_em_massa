@@ -46,11 +46,11 @@ describe("batch controller", () => {
     const controller = createController(store, ["batch-1"]);
 
     await controller.start({ telegramUserId: "123" });
-    const response = await controller.selectTemplate({ telegramUserId: "123" }, "humor-01");
+    const response = await controller.selectTemplate({ telegramUserId: "123" }, "humor-crocodilo");
 
     expect(response.keyboard).toBe("receiving");
     expect(response.batch?.status).toBe("receiving");
-    expect(response.batch?.templateId).toBe("humor-01");
+    expect(response.batch?.templateId).toBe("humor-crocodilo");
   });
 
   it("receives valid videos and persists them in the active batch", async () => {
@@ -58,7 +58,7 @@ describe("batch controller", () => {
     const controller = createController(store, ["batch-1"]);
 
     await controller.start({ telegramUserId: "123" });
-    await controller.selectTemplate({ telegramUserId: "123" }, "humor-01");
+    await controller.selectTemplate({ telegramUserId: "123" }, "humor-crocodilo");
     const response = await controller.receiveVideo(
       { telegramUserId: "123" },
       { id: "video-1", fileId: "file-1", fileName: "clip.mp4", mimeType: "video/mp4", sizeBytes: 1024 }
@@ -76,7 +76,7 @@ describe("batch controller", () => {
     const controller = createController(store, ["batch-1"]);
 
     await controller.start({ telegramUserId: "123" });
-    await controller.selectTemplate({ telegramUserId: "123" }, "humor-01");
+    await controller.selectTemplate({ telegramUserId: "123" }, "humor-crocodilo");
     const response = await controller.receiveVideo(
       { telegramUserId: "123" },
       { id: "video-1", fileId: "file-1", fileName: "clip.exe", mimeType: "application/octet-stream", sizeBytes: 1024 }
@@ -92,7 +92,7 @@ describe("batch controller", () => {
     const controller = createController(store, ["batch-1"], queuedBatchIds);
 
     await controller.start({ telegramUserId: "123" });
-    await controller.selectTemplate({ telegramUserId: "123" }, "humor-01");
+    await controller.selectTemplate({ telegramUserId: "123" }, "humor-crocodilo");
     await controller.receiveVideo(
       { telegramUserId: "123" },
       { id: "video-1", fileId: "file-1", fileName: "clip.mp4", mimeType: "video/mp4", sizeBytes: 1024 }

@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { settingsKeyboard } from "../../src/bot/keyboards.js";
+import { settingsKeyboard, templateKeyboard } from "../../src/bot/keyboards.js";
+
+describe("templateKeyboard", () => {
+  it("lists real file-backed templates as Telegram buttons", () => {
+    const buttons = flattenInlineButtons(templateKeyboard().inline_keyboard);
+
+    expect(buttons).toEqual(
+      expect.arrayContaining([{ text: "Humor Crocodilo", callback_data: "template:humor-crocodilo" }])
+    );
+  });
+});
 
 describe("settingsKeyboard", () => {
   it("exposes every global batch setting before processing", () => {

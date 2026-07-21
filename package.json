@@ -13,7 +13,7 @@
     "start": "node dist/src/index.js",
     "start:worker": "node dist/src/worker/index.js",
     "test": "vitest run",
-    "test:unit": "vitest run tests/config tests/workflow tests/security tests/bot tests/renderer tests/db tests/server tests/queue tests/worker tests/packager tests/storage tests/delivery tests/ci",
+    "test:unit": "vitest run tests/config tests/workflow tests/security tests/bot tests/templates tests/renderer tests/db tests/server tests/queue tests/worker tests/packager tests/storage tests/delivery tests/ci",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "db:migrate": "tsx src/db/migrate.ts"

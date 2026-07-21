@@ -1,0 +1,13 @@
+{
+  "id": "humor-crocodilo",
+  "name": "Humor Crocodilo",
+  "previewPath": "assets/templates/humor-crocodilo/preview.svg",
+  "canvas": { "width": 1080, "height": 1920 },
+  "videoBox": { "x": 90, "y": 620, "width": 900, "height": 1120 },
+  "header": {
+    "avatarPath": "assets/templates/humor-crocodilo/avatar.svg",
+    "displayName": "Humor do Crocodilo",
+    "handle": "@humordocrocodilo",
+    "headline": "Se voce e fa de Humor, ja era pra estar nos seguindo."
+  }
+}

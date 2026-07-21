@@ -21,7 +21,7 @@ describe("createBatchWorker", () => {
           return {
             id: "batch-1",
             telegramUserId: "123",
-            templateId: "humor-01",
+            templateId: "humor-crocodilo",
             status: "queued",
             settings: DEFAULT_BATCH_SETTINGS,
             videos: [{ id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000, status: "queued" }]

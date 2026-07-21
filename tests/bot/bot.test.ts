@@ -62,7 +62,7 @@ describe("createTelegramBot", () => {
       id: "batch-1",
       telegramUserId: "123",
       status: "settings",
-      templateId: "humor-01",
+      templateId: "humor-crocodilo",
       outputZipUrl: null,
       settings: {
         autoCut: true,
@@ -100,7 +100,7 @@ describe("createTelegramBot", () => {
       id: "batch-1",
       telegramUserId: "123",
       status: "settings",
-      templateId: "humor-01",
+      templateId: "humor-crocodilo",
       outputZipUrl: null,
       settings: {
         autoCut: true,
@@ -136,7 +136,7 @@ describe("createTelegramBot", () => {
       id: "batch-1",
       telegramUserId: "123",
       status: "settings",
-      templateId: "humor-01",
+      templateId: "humor-crocodilo",
       outputZipUrl: null,
       settings: {
         autoCut: true,

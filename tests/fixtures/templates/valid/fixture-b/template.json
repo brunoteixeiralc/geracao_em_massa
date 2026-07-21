@@ -1,0 +1,13 @@
+{
+  "id": "fixture-b",
+  "name": "Fixture B",
+  "previewPath": "tests/fixtures/templates/valid/fixture-b/preview.svg",
+  "canvas": { "width": 1080, "height": 1920 },
+  "videoBox": { "x": 90, "y": 620, "width": 900, "height": 1120 },
+  "header": {
+    "avatarPath": "tests/fixtures/templates/valid/fixture-b/avatar.svg",
+    "displayName": "Fixture B Channel",
+    "handle": "@fixtureb",
+    "headline": "Fixture B headline"
+  }
+}
