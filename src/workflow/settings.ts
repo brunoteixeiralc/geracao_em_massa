@@ -25,9 +25,13 @@ export const DEFAULT_BATCH_SETTINGS: BatchSettings = {
 export type SettingAction =
   | { type: "zoom_delta"; delta: number }
   | { type: "speed_delta"; delta: number }
+  | { type: "trim_start_delta"; delta: number }
+  | { type: "trim_end_delta"; delta: number }
   | { type: "toggle_mirror" }
   | { type: "toggle_auto_cut" }
-  | { type: "toggle_antiduplication" };
+  | { type: "toggle_antiduplication" }
+  | { type: "toggle_cta" }
+  | { type: "toggle_watermark" };
 
 export function updateSetting(settings: BatchSettings, action: SettingAction): BatchSettings {
   switch (action.type) {
@@ -35,12 +39,20 @@ export function updateSetting(settings: BatchSettings, action: SettingAction): B
       return { ...settings, zoomPercent: clamp(settings.zoomPercent + action.delta, 100, 130) };
     case "speed_delta":
       return { ...settings, speed: clamp(roundOneDecimal(settings.speed + action.delta), 0.8, 1.3) };
+    case "trim_start_delta":
+      return { ...settings, trimStartSeconds: clamp(roundOneDecimal(settings.trimStartSeconds + action.delta), 0, 2) };
+    case "trim_end_delta":
+      return { ...settings, trimEndSeconds: clamp(roundOneDecimal(settings.trimEndSeconds + action.delta), 0, 2) };
     case "toggle_mirror":
       return { ...settings, mirror: !settings.mirror };
     case "toggle_auto_cut":
       return { ...settings, autoCut: !settings.autoCut };
     case "toggle_antiduplication":
       return { ...settings, antiduplication: !settings.antiduplication };
+    case "toggle_cta":
+      return { ...settings, cta: !settings.cta };
+    case "toggle_watermark":
+      return { ...settings, watermark: !settings.watermark };
   }
 }
 

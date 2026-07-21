@@ -74,11 +74,13 @@ export function openSettings(batch: Batch): Batch {
 }
 
 export function startProcessing(batch: Batch): Batch {
-  const settingsBatch = batch.status === "settings" ? batch : openSettings(batch);
+  if (batch.status !== "settings") {
+    throw new Error("Cannot process before reviewing settings");
+  }
 
   return {
-    ...settingsBatch,
+    ...batch,
     status: "queued",
-    videos: settingsBatch.videos.map((video) => ({ ...video, status: "queued" }))
+    videos: batch.videos.map((video) => ({ ...video, status: "queued" }))
   };
 }

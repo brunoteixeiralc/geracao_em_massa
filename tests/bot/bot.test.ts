@@ -93,6 +93,42 @@ describe("createTelegramBot", () => {
     expect(queuedBatchIds).toEqual(["batch-1"]);
     expect(calls.map((call) => call.method)).toEqual(["answerCallbackQuery", "editMessageText"]);
   });
+
+  it("routes all global setting callbacks to the active batch", async () => {
+    const store = new MemoryBatchStore();
+    store.batch = {
+      id: "batch-1",
+      telegramUserId: "123",
+      status: "settings",
+      templateId: "humor-01",
+      outputZipUrl: null,
+      settings: {
+        autoCut: true,
+        zoomPercent: 105,
+        speed: 1,
+        mirror: false,
+        trimStartSeconds: 0.3,
+        trimEndSeconds: 0.3,
+        antiduplication: true,
+        cta: true,
+        watermark: false
+      },
+      videos: [{ id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000, status: "received" }]
+    };
+
+    await handleUpdate(store, callbackUpdate("settings:trim_start:0.1", 123));
+    await handleUpdate(store, callbackUpdate("settings:trim_end:-0.1", 123));
+    await handleUpdate(store, callbackUpdate("settings:cta", 123));
+    const calls = await handleUpdate(store, callbackUpdate("settings:watermark", 123));
+
+    expect(store.batch?.settings).toMatchObject({
+      trimStartSeconds: 0.4,
+      trimEndSeconds: 0.2,
+      cta: false,
+      watermark: true
+    });
+    expect(calls.map((call) => call.method)).toEqual(["answerCallbackQuery", "editMessageText"]);
+  });
 });
 
 async function handleUpdate(store: BatchStore, update: Record<string, unknown>, queue?: { enqueueBatch(batchId: string): Promise<void> }) {

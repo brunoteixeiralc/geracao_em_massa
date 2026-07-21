@@ -15,7 +15,8 @@ export function renderBatchPanel(batch: Batch): string {
 
   if (batch.status === "settings") {
     lines.push("");
-    lines.push("Ajustes do lote");
+    lines.push("Revisao do lote");
+    lines.push(`Videos: ${batch.videos.length}`);
     lines.push(`Corte automatico: ${onOff(batch.settings.autoCut)}`);
     lines.push(`Zoom: ${batch.settings.zoomPercent}%`);
     lines.push(`Velocidade: ${batch.settings.speed.toFixed(1)}x`);

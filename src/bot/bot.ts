@@ -61,6 +61,20 @@ export function createTelegramBot(options: { env: AppEnv; store: BatchStore; que
     await respond(ctx, options.store, () => controller.updateSettings(readUser(ctx), { type: "speed_delta", delta: Number(ctx.match[1]) }));
   });
 
+  bot.callbackQuery(/^settings:trim_start:(-?\d+(?:\.\d+)?)$/, async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await respond(ctx, options.store, () =>
+      controller.updateSettings(readUser(ctx), { type: "trim_start_delta", delta: Number(ctx.match[1]) })
+    );
+  });
+
+  bot.callbackQuery(/^settings:trim_end:(-?\d+(?:\.\d+)?)$/, async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await respond(ctx, options.store, () =>
+      controller.updateSettings(readUser(ctx), { type: "trim_end_delta", delta: Number(ctx.match[1]) })
+    );
+  });
+
   bot.callbackQuery("settings:mirror", async (ctx) => {
     await ctx.answerCallbackQuery();
     await respond(ctx, options.store, () => controller.updateSettings(readUser(ctx), { type: "toggle_mirror" }));
@@ -74,6 +88,16 @@ export function createTelegramBot(options: { env: AppEnv; store: BatchStore; que
   bot.callbackQuery("settings:antiduplication", async (ctx) => {
     await ctx.answerCallbackQuery();
     await respond(ctx, options.store, () => controller.updateSettings(readUser(ctx), { type: "toggle_antiduplication" }));
+  });
+
+  bot.callbackQuery("settings:cta", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await respond(ctx, options.store, () => controller.updateSettings(readUser(ctx), { type: "toggle_cta" }));
+  });
+
+  bot.callbackQuery("settings:watermark", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await respond(ctx, options.store, () => controller.updateSettings(readUser(ctx), { type: "toggle_watermark" }));
   });
 
   bot.callbackQuery("batch:process", async (ctx) => {

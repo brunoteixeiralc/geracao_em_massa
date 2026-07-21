@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDraftBatch, receiveVideo, selectTemplate, startProcessing } from "../../src/workflow/batchWorkflow.js";
+import { createDraftBatch, openSettings, receiveVideo, selectTemplate, startProcessing } from "../../src/workflow/batchWorkflow.js";
 import { DEFAULT_BATCH_SETTINGS } from "../../src/workflow/settings.js";
 
 describe("batch workflow", () => {
@@ -30,9 +30,17 @@ describe("batch workflow", () => {
   it("queues a batch with videos", () => {
     let batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-01");
     batch = receiveVideo(batch, { id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000 }, 50);
+    batch = openSettings(batch);
     batch = startProcessing(batch);
 
     expect(batch.status).toBe("queued");
     expect(batch.videos).toEqual([{ id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000, status: "queued" }]);
+  });
+
+  it("requires the settings review before queueing", () => {
+    let batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-01");
+    batch = receiveVideo(batch, { id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000 }, 50);
+
+    expect(() => startProcessing(batch)).toThrow("Cannot process before reviewing settings");
   });
 });

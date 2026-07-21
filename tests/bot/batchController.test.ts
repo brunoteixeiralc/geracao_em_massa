@@ -99,6 +99,9 @@ describe("batch controller", () => {
     );
     await controller.openSettings({ telegramUserId: "123" });
     await controller.updateSettings({ telegramUserId: "123" }, { type: "zoom_delta", delta: 5 });
+    await controller.updateSettings({ telegramUserId: "123" }, { type: "trim_start_delta", delta: 0.2 });
+    await controller.updateSettings({ telegramUserId: "123" }, { type: "toggle_cta" });
+    await controller.updateSettings({ telegramUserId: "123" }, { type: "toggle_watermark" });
     const response = await controller.queueBatch({ telegramUserId: "123" }, { chatId: "123", messageId: 456 });
 
     expect(response.batch?.status).toBe("queued");
@@ -107,6 +110,9 @@ describe("batch controller", () => {
     expect(store.batch?.statusPanelChatId).toBe("123");
     expect(store.batch?.statusPanelMessageId).toBe(456);
     expect(response.batch?.settings.zoomPercent).toBe(110);
+    expect(response.batch?.settings.trimStartSeconds).toBe(0.5);
+    expect(response.batch?.settings.cta).toBe(false);
+    expect(response.batch?.settings.watermark).toBe(true);
     expect(queuedBatchIds).toEqual(["batch-1"]);
     expect(response.text).toContain("Trabalho enviado para a fila");
   });
