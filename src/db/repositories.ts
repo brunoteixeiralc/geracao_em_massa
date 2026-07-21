@@ -42,6 +42,8 @@ export function mapBatchRow(row: BatchRow): Batch {
     telegramUserId: row.telegram_user_id,
     status: row.status as BatchStatus,
     templateId: row.template_id,
+    statusPanelChatId: row.status_panel_chat_id,
+    statusPanelMessageId: row.status_panel_message_id ? Number(row.status_panel_message_id) : null,
     outputZipUrl: row.output_zip_url,
     settings: JSON.parse(row.settings_json) as BatchSettings,
     videos: []
@@ -144,11 +146,21 @@ export class LibsqlBatchRepository {
         SET template_id = ?,
             status = ?,
             settings_json = ?,
+            status_panel_chat_id = ?,
+            status_panel_message_id = ?,
             output_zip_url = ?,
             updated_at = datetime('now')
         WHERE id = ?
       `,
-      args: [batch.templateId, batch.status, JSON.stringify(batch.settings), batch.outputZipUrl ?? null, batch.id]
+      args: [
+        batch.templateId,
+        batch.status,
+        JSON.stringify(batch.settings),
+        batch.statusPanelChatId ?? null,
+        batch.statusPanelMessageId?.toString() ?? null,
+        batch.outputZipUrl ?? null,
+        batch.id
+      ]
     });
 
     for (const video of batch.videos) {

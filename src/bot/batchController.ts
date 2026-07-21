@@ -44,6 +44,7 @@ export type MediaValidator = (input: {
 export type BatchControllerResponse = {
   text: string;
   keyboard: "templates" | "receiving" | "settings" | null;
+  captureStatusPanel?: boolean;
   batch?: Batch;
 };
 
@@ -137,15 +138,26 @@ export function createBatchController(options: BatchControllerOptions) {
       };
     },
 
-    async queueBatch(user: TelegramUserRef): Promise<BatchControllerResponse> {
+    async queueBatch(
+      user: TelegramUserRef,
+      statusPanel?: { chatId: string; messageId: number }
+    ): Promise<BatchControllerResponse> {
       const batch = await requireActiveBatch(options.store, user.telegramUserId);
-      const updated = startProcessing(batch);
+      const processingBatch = startProcessing(batch);
+      const updated: Batch = statusPanel
+        ? {
+            ...processingBatch,
+            statusPanelChatId: statusPanel.chatId,
+            statusPanelMessageId: statusPanel.messageId
+          }
+        : processingBatch;
       await options.store.saveBatch(updated);
       await options.queue?.enqueueBatch(updated.id);
 
       return {
         text: [renderBatchPanel(updated), "", "Trabalho enviado para a fila. O processamento continua no servidor."].join("\n"),
         keyboard: null,
+        captureStatusPanel: true,
         batch: updated
       };
     },

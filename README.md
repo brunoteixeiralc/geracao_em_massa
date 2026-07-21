@@ -54,7 +54,7 @@ Fundacao tecnica do MVP ja preparada:
 - modelo de status do lote e progresso;
 - regras de ajustes globais por lote;
 - templates fixos iniciais;
-- renderizacao do painel de status do Telegram;
+- renderizacao e atualizacao ao vivo do painel de status do Telegram;
 - fila BullMQ para enfileirar lotes;
 - worker inicial para baixar videos do Telegram e renderizar MP4s locais;
 - executor FFprobe/FFmpeg sem shell para gerar Reels 9:16;
@@ -327,6 +327,6 @@ docs/
 
 ## Proximas Etapas
 
-- Expandir painel vivo com progresso detalhado por fase.
+- Melhorar ajustes avancados do lote no Telegram.
 - Adicionar testes de integracao com videos pequenos reais no FFmpeg.
 - Fazer smoke test em staging no Railway com Telegram, Redis, Turso e S3/R2 reais.

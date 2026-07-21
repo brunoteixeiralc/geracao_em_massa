@@ -99,9 +99,13 @@ describe("batch controller", () => {
     );
     await controller.openSettings({ telegramUserId: "123" });
     await controller.updateSettings({ telegramUserId: "123" }, { type: "zoom_delta", delta: 5 });
-    const response = await controller.queueBatch({ telegramUserId: "123" });
+    const response = await controller.queueBatch({ telegramUserId: "123" }, { chatId: "123", messageId: 456 });
 
     expect(response.batch?.status).toBe("queued");
+    expect(response.batch?.statusPanelChatId).toBe("123");
+    expect(response.batch?.statusPanelMessageId).toBe(456);
+    expect(store.batch?.statusPanelChatId).toBe("123");
+    expect(store.batch?.statusPanelMessageId).toBe(456);
     expect(response.batch?.settings.zoomPercent).toBe(110);
     expect(queuedBatchIds).toEqual(["batch-1"]);
     expect(response.text).toContain("Trabalho enviado para a fila");

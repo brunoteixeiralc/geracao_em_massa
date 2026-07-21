@@ -137,7 +137,7 @@ Rode este teste com 2 ou 3 videos pequenos antes de liberar lotes maiores.
 5. Envie 2 ou 3 videos com menos de 20 MB cada.
 6. Finalize o envio e confirme os ajustes globais padrao.
 7. Confirme o processamento.
-8. Observe o painel vivo de status no Telegram.
+8. Observe o painel vivo de status no Telegram mudando de fase na mesma mensagem.
 9. Confirme nos logs que o `web` criou o lote e publicou o job.
 10. Confirme nos logs que o `worker` passou por download, renderizacao, ZIP, upload e entrega.
 11. Verifique se os MP4s foram entregues quando couberem no limite do Telegram.

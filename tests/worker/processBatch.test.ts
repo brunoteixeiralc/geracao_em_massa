@@ -33,6 +33,7 @@ describe("processQueuedBatch", () => {
     const renderCalls: string[] = [];
     const uploadedKeys: string[] = [];
     const deliveredZipUrls: string[] = [];
+    const notifiedStatuses: string[] = [];
 
     const result = await processQueuedBatch({
       batchId: "batch-1",
@@ -65,6 +66,11 @@ describe("processQueuedBatch", () => {
         deliverBatch: async (input) => {
           deliveredZipUrls.push(input.zipUrl);
         }
+      },
+      statusNotifier: {
+        updateBatchStatus: async (batch) => {
+          notifiedStatuses.push(batch.status);
+        }
       }
     });
 
@@ -94,6 +100,12 @@ describe("processQueuedBatch", () => {
       "batches/batch-1/batch-1.zip"
     ]);
     expect(deliveredZipUrls).toEqual(["https://files.example.com/batches/batch-1/batch-1.zip"]);
+    expect(notifiedStatuses).toContain("downloading");
+    expect(notifiedStatuses).toContain("rendering");
+    expect(notifiedStatuses).toContain("zipping");
+    expect(notifiedStatuses).toContain("uploading");
+    expect(notifiedStatuses).toContain("delivering");
+    expect(notifiedStatuses.at(-1)).toBe("completed");
     expect(store.batches.map((batch) => batch.status)).toEqual([
       "queued",
       "downloading",

@@ -67,6 +67,10 @@ export type WorkerDelivery = {
   }): Promise<void>;
 };
 
+export type WorkerStatusNotifier = {
+  updateBatchStatus(batch: Batch): Promise<void>;
+};
+
 export async function processQueuedBatch(options: {
   batchId: string;
   store: WorkerBatchStore;
@@ -75,6 +79,7 @@ export async function processQueuedBatch(options: {
   packager: WorkerPackager;
   storage: WorkerStorage;
   delivery: WorkerDelivery;
+  statusNotifier?: WorkerStatusNotifier;
 }) {
   const batch = await options.store.findBatchById(options.batchId);
   if (!batch) {
@@ -95,11 +100,11 @@ export async function processQueuedBatch(options: {
     status: "downloading",
     videos: batch.videos.map((video) => ({ ...video, status: "queued" }))
   };
-  await options.store.saveBatch(currentBatch);
+  await saveBatchProgress(options, currentBatch);
 
   for (const video of currentBatch.videos) {
     currentBatch = updateVideo(currentBatch, video.id, { status: "downloading" });
-    await options.store.saveBatch(currentBatch);
+    await saveBatchProgress(options, currentBatch);
 
     try {
       const download = await options.downloader.downloadVideo({
@@ -113,32 +118,32 @@ export async function processQueuedBatch(options: {
         status: "queued",
         inputPath: download.inputPath
       });
-      await options.store.saveBatch(currentBatch);
+      await saveBatchProgress(options, currentBatch);
     } catch (error) {
       currentBatch = {
         ...updateVideo(currentBatch, video.id, { status: "failed" }),
         status: "failed"
       };
-      await options.store.saveBatch(currentBatch);
+      await saveBatchProgress(options, currentBatch);
       throw error;
     }
   }
 
   currentBatch = { ...currentBatch, status: "validating" };
-  await options.store.saveBatch(currentBatch);
+  await saveBatchProgress(options, currentBatch);
 
   currentBatch = { ...currentBatch, status: "rendering" };
-  await options.store.saveBatch(currentBatch);
+  await saveBatchProgress(options, currentBatch);
 
   for (const video of currentBatch.videos) {
     if (!video.inputPath) {
       currentBatch = updateVideo(currentBatch, video.id, { status: "failed" });
-      await options.store.saveBatch(currentBatch);
+      await saveBatchProgress(options, currentBatch);
       continue;
     }
 
     currentBatch = updateVideo(currentBatch, video.id, { status: "rendering" });
-    await options.store.saveBatch(currentBatch);
+    await saveBatchProgress(options, currentBatch);
 
     try {
       const render = await options.renderer.renderVideo({
@@ -153,21 +158,21 @@ export async function processQueuedBatch(options: {
         status: "ready",
         outputPath: render.outputPath
       });
-      await options.store.saveBatch(currentBatch);
+      await saveBatchProgress(options, currentBatch);
     } catch {
       currentBatch = updateVideo(currentBatch, video.id, { status: "failed" });
-      await options.store.saveBatch(currentBatch);
+      await saveBatchProgress(options, currentBatch);
     }
   }
 
   if (currentBatch.videos.every((video) => video.status === "failed")) {
     currentBatch = { ...currentBatch, status: "failed" };
-    await options.store.saveBatch(currentBatch);
+    await saveBatchProgress(options, currentBatch);
     return currentBatch;
   }
 
   currentBatch = { ...currentBatch, status: "zipping" };
-  await options.store.saveBatch(currentBatch);
+  await saveBatchProgress(options, currentBatch);
 
   const readyVideos = currentBatch.videos.filter((video) => video.status === "ready");
   const zip = await options.packager.createBatchZip({
@@ -177,7 +182,7 @@ export async function processQueuedBatch(options: {
 
   try {
     currentBatch = { ...currentBatch, status: "uploading" };
-    await options.store.saveBatch(currentBatch);
+    await saveBatchProgress(options, currentBatch);
 
     for (const video of readyVideos) {
       if (!video.outputPath) {
@@ -191,7 +196,7 @@ export async function processQueuedBatch(options: {
       });
 
       currentBatch = updateVideo(currentBatch, video.id, { outputUrl: upload.url });
-      await options.store.saveBatch(currentBatch);
+      await saveBatchProgress(options, currentBatch);
     }
 
     const zipUpload = await options.storage.uploadFile({
@@ -205,7 +210,7 @@ export async function processQueuedBatch(options: {
       outputZipUrl: zipUpload.url,
       status: "delivering"
     };
-    await options.store.saveBatch(currentBatch);
+    await saveBatchProgress(options, currentBatch);
 
     await options.delivery.deliverBatch({
       chatId: currentBatch.telegramUserId,
@@ -218,14 +223,30 @@ export async function processQueuedBatch(options: {
       status: "completed",
       videos: currentBatch.videos.map((video) => (video.status === "ready" ? { ...video, status: "delivered" } : video))
     };
-    await options.store.saveBatch(currentBatch);
+    await saveBatchProgress(options, currentBatch);
   } catch (error) {
     currentBatch = { ...currentBatch, status: "failed" };
-    await options.store.saveBatch(currentBatch);
+    await saveBatchProgress(options, currentBatch);
     throw error;
   }
 
   return currentBatch;
+}
+
+async function saveBatchProgress(
+  options: {
+    store: WorkerBatchStore;
+    statusNotifier?: WorkerStatusNotifier;
+  },
+  batch: Batch
+) {
+  await options.store.saveBatch(batch);
+
+  try {
+    await options.statusNotifier?.updateBatchStatus(batch);
+  } catch (error) {
+    console.warn("Status panel update failed", error);
+  }
 }
 
 function updateVideo(batch: Batch, videoId: string, patch: Partial<Batch["videos"][number]>): Batch {

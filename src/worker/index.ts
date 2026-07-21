@@ -8,6 +8,7 @@ import { createFfmpegRenderer } from "../renderer/ffmpegRenderer.js";
 import { createZipPackager } from "../packager/zipPackager.js";
 import { createS3Client, createS3Storage } from "../storage/s3Storage.js";
 import { createTelegramDelivery } from "../delivery/telegramDelivery.js";
+import { createTelegramStatusPanelUpdater } from "../bot/statusPanelUpdater.js";
 
 const env = parseEnv(process.env);
 const db = createDbClient(env);
@@ -37,6 +38,9 @@ const delivery = createTelegramDelivery({
   botToken: env.telegramBotToken,
   maxTelegramSendBytes: env.maxTelegramSendBytes
 });
+const statusNotifier = createTelegramStatusPanelUpdater({
+  botToken: env.telegramBotToken
+});
 
 createBatchWorker({
   redisUrl: env.redisUrl,
@@ -46,7 +50,8 @@ createBatchWorker({
   renderer,
   packager,
   storage,
-  delivery
+  delivery,
+  statusNotifier
 });
 
 console.log(`Reels worker started with concurrency ${env.workerConcurrency}`);

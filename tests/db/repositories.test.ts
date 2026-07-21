@@ -29,6 +29,8 @@ describe("db repository mappers", () => {
       telegramUserId: "123",
       status: "settings",
       templateId: "humor-01",
+      statusPanelChatId: "123",
+      statusPanelMessageId: 456,
       outputZipUrl: "https://files.example.com/batch-1.zip",
       settings: DEFAULT_BATCH_SETTINGS,
       videos: []
@@ -77,6 +79,8 @@ describe("LibsqlBatchRepository", () => {
     batch = receiveVideo(batch, { id: "video-1", fileId: "file-1", fileName: "clip.mp4", sizeBytes: 1024 }, 50);
     batch = {
       ...batch,
+      statusPanelChatId: "123",
+      statusPanelMessageId: 456,
       videos: [
         {
           ...batch.videos[0],
@@ -96,6 +100,8 @@ describe("LibsqlBatchRepository", () => {
       telegramUserId: "123",
       status: "receiving",
       templateId: "humor-01",
+      statusPanelChatId: "123",
+      statusPanelMessageId: 456,
       outputZipUrl: "https://files.example.com/batch-1.zip",
       videos: [
         {

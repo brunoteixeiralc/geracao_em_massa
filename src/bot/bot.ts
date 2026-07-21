@@ -38,60 +38,60 @@ export function createTelegramBot(options: { env: AppEnv; store: BatchStore; que
   });
 
   bot.command("novo", async (ctx) => {
-    await respond(ctx, () => controller.start(readUser(ctx)));
+    await respond(ctx, options.store, () => controller.start(readUser(ctx)));
   });
 
   bot.callbackQuery(/^template:(.+)$/, async (ctx) => {
     await ctx.answerCallbackQuery();
-    await respond(ctx, () => controller.selectTemplate(readUser(ctx), ctx.match[1]));
+    await respond(ctx, options.store, () => controller.selectTemplate(readUser(ctx), ctx.match[1]));
   });
 
   bot.callbackQuery("batch:settings", async (ctx) => {
     await ctx.answerCallbackQuery();
-    await respond(ctx, () => controller.openSettings(readUser(ctx)));
+    await respond(ctx, options.store, () => controller.openSettings(readUser(ctx)));
   });
 
   bot.callbackQuery(/^settings:zoom:(-?\d+)$/, async (ctx) => {
     await ctx.answerCallbackQuery();
-    await respond(ctx, () => controller.updateSettings(readUser(ctx), { type: "zoom_delta", delta: Number(ctx.match[1]) }));
+    await respond(ctx, options.store, () => controller.updateSettings(readUser(ctx), { type: "zoom_delta", delta: Number(ctx.match[1]) }));
   });
 
   bot.callbackQuery(/^settings:speed:(-?\d+(?:\.\d+)?)$/, async (ctx) => {
     await ctx.answerCallbackQuery();
-    await respond(ctx, () => controller.updateSettings(readUser(ctx), { type: "speed_delta", delta: Number(ctx.match[1]) }));
+    await respond(ctx, options.store, () => controller.updateSettings(readUser(ctx), { type: "speed_delta", delta: Number(ctx.match[1]) }));
   });
 
   bot.callbackQuery("settings:mirror", async (ctx) => {
     await ctx.answerCallbackQuery();
-    await respond(ctx, () => controller.updateSettings(readUser(ctx), { type: "toggle_mirror" }));
+    await respond(ctx, options.store, () => controller.updateSettings(readUser(ctx), { type: "toggle_mirror" }));
   });
 
   bot.callbackQuery("settings:auto_cut", async (ctx) => {
     await ctx.answerCallbackQuery();
-    await respond(ctx, () => controller.updateSettings(readUser(ctx), { type: "toggle_auto_cut" }));
+    await respond(ctx, options.store, () => controller.updateSettings(readUser(ctx), { type: "toggle_auto_cut" }));
   });
 
   bot.callbackQuery("settings:antiduplication", async (ctx) => {
     await ctx.answerCallbackQuery();
-    await respond(ctx, () => controller.updateSettings(readUser(ctx), { type: "toggle_antiduplication" }));
+    await respond(ctx, options.store, () => controller.updateSettings(readUser(ctx), { type: "toggle_antiduplication" }));
   });
 
   bot.callbackQuery("batch:process", async (ctx) => {
     await ctx.answerCallbackQuery();
-    await respond(ctx, () => controller.queueBatch(readUser(ctx)));
+    await respond(ctx, options.store, () => controller.queueBatch(readUser(ctx), readStatusPanelRef(ctx)));
   });
 
   bot.callbackQuery("batch:cancel", async (ctx) => {
     await ctx.answerCallbackQuery();
-    await respond(ctx, () => controller.cancelBatch(readUser(ctx)));
+    await respond(ctx, options.store, () => controller.cancelBatch(readUser(ctx)));
   });
 
   bot.on("message:video", async (ctx) => {
-    await respond(ctx, () => controller.receiveVideo(readUser(ctx), videoFromMessage(ctx)));
+    await respond(ctx, options.store, () => controller.receiveVideo(readUser(ctx), videoFromMessage(ctx)));
   });
 
   bot.on("message:document", async (ctx) => {
-    await respond(ctx, () => controller.receiveVideo(readUser(ctx), documentFromMessage(ctx)));
+    await respond(ctx, options.store, () => controller.receiveVideo(readUser(ctx), documentFromMessage(ctx)));
   });
 
   bot.catch(async (error) => {
@@ -101,9 +101,22 @@ export function createTelegramBot(options: { env: AppEnv; store: BatchStore; que
   return bot;
 }
 
-async function respond(ctx: Context, action: () => Promise<BatchControllerResponse>) {
+async function respond(ctx: Context, store: BatchStore, action: () => Promise<BatchControllerResponse>) {
   try {
-    await sendResponse(ctx, await action());
+    const response = await action();
+    const panelRef = await sendResponse(ctx, response);
+    if (
+      response.captureStatusPanel &&
+      response.batch &&
+      panelRef &&
+      (!response.batch.statusPanelChatId || !response.batch.statusPanelMessageId)
+    ) {
+      await store.saveBatch({
+        ...response.batch,
+        statusPanelChatId: panelRef.chatId,
+        statusPanelMessageId: panelRef.messageId
+      });
+    }
   } catch (error) {
     const text = error instanceof Error ? error.message : "Nao consegui processar essa acao.";
     await sendResponse(ctx, { text, keyboard: null });
@@ -118,6 +131,17 @@ function readUser(ctx: Context) {
   return {
     telegramUserId: ctx.from.id.toString(),
     username: ctx.from.username
+  };
+}
+
+function readStatusPanelRef(ctx: Context) {
+  if (!ctx.callbackQuery?.message) {
+    return undefined;
+  }
+
+  return {
+    chatId: ctx.callbackQuery.message.chat.id.toString(),
+    messageId: ctx.callbackQuery.message.message_id
   };
 }
 
@@ -151,15 +175,22 @@ function documentFromMessage(ctx: Context) {
   };
 }
 
-async function sendResponse(ctx: Context, response: BatchControllerResponse) {
+async function sendResponse(ctx: Context, response: BatchControllerResponse): Promise<{ chatId: string; messageId: number } | null> {
   const replyMarkup = keyboardFor(response.keyboard);
 
   if (ctx.callbackQuery?.message) {
     await ctx.editMessageText(response.text, replyMarkup ? { reply_markup: replyMarkup } : undefined);
-    return;
+    return {
+      chatId: ctx.callbackQuery.message.chat.id.toString(),
+      messageId: ctx.callbackQuery.message.message_id
+    };
   }
 
-  await ctx.reply(response.text, replyMarkup ? { reply_markup: replyMarkup } : undefined);
+  const message = await ctx.reply(response.text, replyMarkup ? { reply_markup: replyMarkup } : undefined);
+  return {
+    chatId: message.chat.id.toString(),
+    messageId: message.message_id
+  };
 }
 
 function keyboardFor(name: BatchControllerResponse["keyboard"]): InlineKeyboard | undefined {

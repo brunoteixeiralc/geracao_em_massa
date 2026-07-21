@@ -28,8 +28,11 @@ export function renderBatchPanel(batch: Batch): string {
   }
 
   if (["queued", "downloading", "validating", "rendering", "zipping", "uploading", "delivering"].includes(batch.status)) {
-    const ready = batch.videos.filter((video) => video.status === "ready" || video.status === "delivered").length;
-    lines.push(`Progresso: ${ready}/${batch.videos.length} videos`);
+    const progress = calculateProgress(batch);
+    lines.push(`Fase: ${labelStatus(batch.status)}`);
+    lines.push(`Baixados: ${progress.downloaded}/${batch.videos.length}`);
+    lines.push(`Renderizados: ${progress.rendered}/${batch.videos.length}`);
+    lines.push(`Entregues: ${progress.delivered}/${batch.videos.length}`);
   }
 
   if (batch.status === "completed") {
@@ -65,4 +68,15 @@ function labelStatus(status: Batch["status"]) {
 
 function onOff(value: boolean) {
   return value ? "ligado" : "desligado";
+}
+
+function calculateProgress(batch: Batch) {
+  const downloadedStatuses = new Set(["rendering", "ready", "delivered"]);
+  const renderedStatuses = new Set(["ready", "delivered"]);
+
+  return {
+    downloaded: batch.videos.filter((video) => Boolean(video.inputPath) || downloadedStatuses.has(video.status)).length,
+    rendered: batch.videos.filter((video) => Boolean(video.outputPath) || renderedStatuses.has(video.status)).length,
+    delivered: batch.videos.filter((video) => video.status === "delivered").length
+  };
 }

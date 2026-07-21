@@ -7,6 +7,7 @@ import {
   type WorkerDownloader,
   type WorkerPackager,
   type WorkerRenderer,
+  type WorkerStatusNotifier,
   type WorkerStorage
 } from "./processBatch.js";
 
@@ -29,6 +30,7 @@ export function createBatchWorker(options: {
   packager: WorkerPackager;
   storage: WorkerStorage;
   delivery: WorkerDelivery;
+  statusNotifier?: WorkerStatusNotifier;
   createWorker?: WorkerFactory;
 }) {
   const workerFactory = options.createWorker ?? createDefaultWorker(options.redisUrl);
@@ -47,7 +49,8 @@ export function createBatchWorker(options: {
         renderer: options.renderer,
         packager: options.packager,
         storage: options.storage,
-        delivery: options.delivery
+        delivery: options.delivery,
+        statusNotifier: options.statusNotifier
       });
     },
     {

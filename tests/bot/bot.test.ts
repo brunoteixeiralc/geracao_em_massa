@@ -55,10 +55,48 @@ describe("createTelegramBot", () => {
     expect(calls[0]?.payload.text).toContain("Escolha um template");
     expect(calls[0]?.payload.reply_markup).toBeDefined();
   });
+
+  it("stores the edited Telegram message as the live status panel before queueing", async () => {
+    const store = new MemoryBatchStore();
+    store.batch = {
+      id: "batch-1",
+      telegramUserId: "123",
+      status: "settings",
+      templateId: "humor-01",
+      outputZipUrl: null,
+      settings: {
+        autoCut: true,
+        zoomPercent: 105,
+        speed: 1,
+        mirror: false,
+        trimStartSeconds: 0.3,
+        trimEndSeconds: 0.3,
+        antiduplication: true,
+        cta: true,
+        watermark: false
+      },
+      videos: [{ id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000, status: "received" }]
+    };
+    const queuedBatchIds: string[] = [];
+
+    const calls = await handleUpdate(store, callbackUpdate("batch:process", 123), {
+      enqueueBatch: async (batchId) => {
+        queuedBatchIds.push(batchId);
+      }
+    });
+
+    expect(store.batch).toMatchObject({
+      status: "queued",
+      statusPanelChatId: "123",
+      statusPanelMessageId: 7
+    });
+    expect(queuedBatchIds).toEqual(["batch-1"]);
+    expect(calls.map((call) => call.method)).toEqual(["answerCallbackQuery", "editMessageText"]);
+  });
 });
 
-async function handleUpdate(store: BatchStore, update: Record<string, unknown>) {
-  const bot = createTelegramBot({ env: testEnv(), store });
+async function handleUpdate(store: BatchStore, update: Record<string, unknown>, queue?: { enqueueBatch(batchId: string): Promise<void> }) {
+  const bot = createTelegramBot({ env: testEnv(), store, queue });
   bot.botInfo = {
     id: 123456,
     is_bot: true,
@@ -97,6 +135,23 @@ function updateWithText(text: string, userId: number) {
       from: { id: userId, is_bot: false, first_name: "User" },
       text,
       entities: [{ type: "bot_command", offset: 0, length: text.length }]
+    }
+  };
+}
+
+function callbackUpdate(data: string, userId: number) {
+  return {
+    update_id: 1,
+    callback_query: {
+      id: "callback-1",
+      from: { id: userId, is_bot: false, first_name: "User" },
+      message: {
+        message_id: 7,
+        date: 1,
+        chat: { id: userId, type: "private" },
+        text: "panel"
+      },
+      data
     }
   };
 }
