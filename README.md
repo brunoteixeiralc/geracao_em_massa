@@ -121,6 +121,8 @@ O CI do GitHub executa build, testes, cobertura e auditoria de dependencias.
 
 ## Ambiente Local
 
+Use Node.js 22 ou superior.
+
 Instale as dependencias:
 
 ```bash
