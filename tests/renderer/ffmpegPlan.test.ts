@@ -3,7 +3,6 @@ import { buildFfmpegArgs } from "../../src/renderer/ffmpegPlan.js";
 import { getTemplateById } from "../../src/templates/templates.js";
 import { DEFAULT_BATCH_SETTINGS } from "../../src/workflow/settings.js";
 
-const crocodiloTemplate = getTemplateById("humor-crocodilo")!;
 const cachorroTemplate = getTemplateById("humor-cachorro")!;
 
 describe("buildFfmpegArgs", () => {
@@ -11,7 +10,7 @@ describe("buildFfmpegArgs", () => {
     const args = buildFfmpegArgs({
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
-      template: crocodiloTemplate,
+      template: cachorroTemplate,
       settings: DEFAULT_BATCH_SETTINGS
     });
 
@@ -27,13 +26,13 @@ describe("buildFfmpegArgs", () => {
     const args = buildFfmpegArgs({
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
-      template: crocodiloTemplate,
+      template: cachorroTemplate,
       settings: DEFAULT_BATCH_SETTINGS
     });
     const joinedArgs = args.join(" ");
 
     expect(joinedArgs).toContain("color=c=white:s=1080x1920");
-    expect(joinedArgs).toContain("overlay=90:620:shortest=1");
+    expect(joinedArgs).toContain("overlay=0:761:shortest=1");
     expect(joinedArgs).toContain("-map [composed]");
   });
 
@@ -42,17 +41,18 @@ describe("buildFfmpegArgs", () => {
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
       template: {
-        ...crocodiloTemplate,
+        ...cachorroTemplate,
         kind: "frame",
-        framePath: "assets/templates/humor-crocodilo/frame.png"
+        framePath: "assets/templates/humor-cachorro/frame.png",
+        keyColor: undefined
       },
       settings: DEFAULT_BATCH_SETTINGS
     });
     const joinedArgs = args.join(" ");
 
-    expect(joinedArgs).toContain("-loop 1 -i assets/templates/humor-crocodilo/frame.png");
+    expect(joinedArgs).toContain("-loop 1 -i assets/templates/humor-cachorro/frame.png");
     expect(joinedArgs).toContain("[1:v]format=rgba[frame]");
-    expect(joinedArgs).toContain("[canvas][video]overlay=90:620:shortest=1[video_on_canvas]");
+    expect(joinedArgs).toContain("[canvas][video]overlay=0:761:shortest=1[video_on_canvas]");
     expect(joinedArgs).toContain("[video_on_canvas][frame]overlay=0:0:shortest=1");
     expect(joinedArgs).toContain("[composed]");
   });
@@ -74,7 +74,7 @@ describe("buildFfmpegArgs", () => {
     const args = buildFfmpegArgs({
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
-      template: crocodiloTemplate,
+      template: cachorroTemplate,
       settings: { ...DEFAULT_BATCH_SETTINGS, mirror: true }
     });
 
@@ -85,7 +85,7 @@ describe("buildFfmpegArgs", () => {
     const args = buildFfmpegArgs({
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
-      template: crocodiloTemplate,
+      template: cachorroTemplate,
       settings: { ...DEFAULT_BATCH_SETTINGS, trimStartSeconds: 0.3, trimEndSeconds: 0.7 },
       inputDurationSeconds: 10
     });
@@ -97,7 +97,7 @@ describe("buildFfmpegArgs", () => {
     const args = buildFfmpegArgs({
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
-      template: crocodiloTemplate,
+      template: cachorroTemplate,
       settings: { ...DEFAULT_BATCH_SETTINGS, antiduplication: true }
     });
     const joinedArgs = args.join(" ");
@@ -112,7 +112,7 @@ describe("buildFfmpegArgs", () => {
     const args = buildFfmpegArgs({
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
-      template: crocodiloTemplate,
+      template: cachorroTemplate,
       settings: { ...DEFAULT_BATCH_SETTINGS, antiduplication: false }
     });
     const joinedArgs = args.join(" ");

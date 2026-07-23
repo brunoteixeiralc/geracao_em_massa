@@ -6,7 +6,7 @@ describe("templateKeyboard", () => {
     const buttons = flattenInlineButtons(templateKeyboard().inline_keyboard);
 
     expect(buttons).toEqual(
-      expect.arrayContaining([{ text: "Humor Crocodilo", callback_data: "template:humor-crocodilo" }])
+      expect.arrayContaining([{ text: "Humor Cachorro", callback_data: "template:humor-cachorro" }])
     );
   });
 });

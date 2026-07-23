@@ -21,7 +21,7 @@ describe("processQueuedBatch", () => {
     store.batches.push({
       id: "batch-1",
       telegramUserId: "123",
-      templateId: "humor-crocodilo",
+      templateId: "humor-cachorro",
       status: "queued",
       settings: DEFAULT_BATCH_SETTINGS,
       videos: [
@@ -133,7 +133,7 @@ describe("processQueuedBatch", () => {
     store.batches.push({
       id: "batch-1",
       telegramUserId: "123",
-      templateId: "humor-crocodilo",
+      templateId: "humor-cachorro",
       status: "queued",
       settings: DEFAULT_BATCH_SETTINGS,
       videos: [{ id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000, status: "queued" }]
@@ -182,7 +182,7 @@ describe("processQueuedBatch", () => {
     store.batches.push({
       id: "batch-1",
       telegramUserId: "123",
-      templateId: "humor-crocodilo",
+      templateId: "humor-cachorro",
       status: "queued",
       settings: DEFAULT_BATCH_SETTINGS,
       videos: [

@@ -1,9 +1,0 @@
-{
-  "id": "humor-crocodilo",
-  "name": "Humor Crocodilo",
-  "kind": "frame",
-  "previewPath": "assets/templates/humor-crocodilo/preview.svg",
-  "framePath": "assets/templates/humor-crocodilo/frame.png",
-  "canvas": { "width": 1080, "height": 1920 },
-  "videoBox": { "x": 90, "y": 620, "width": 900, "height": 1120 }
-}

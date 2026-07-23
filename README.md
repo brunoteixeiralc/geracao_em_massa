@@ -317,7 +317,7 @@ src/
   workflow/     Regras de lote, ajustes e status
 
 assets/
-  templates/    Templates versionados com template.json, preview e avatar
+  templates/    Templates versionados com template.json, preview e frame
 
 tests/
   bot/
@@ -358,7 +358,7 @@ Exemplo:
 
 ```text
 assets/templates/
-  humor-crocodilo/
+  meu-template/
     template.json
     frame.png
     preview.svg
@@ -371,11 +371,11 @@ Exemplo de `template.json` para template pronto:
 
 ```json
 {
-  "id": "humor-crocodilo",
-  "name": "Humor Crocodilo",
+  "id": "meu-template",
+  "name": "Meu Template",
   "kind": "frame",
-  "previewPath": "assets/templates/humor-crocodilo/preview.svg",
-  "framePath": "assets/templates/humor-crocodilo/frame.png",
+  "previewPath": "assets/templates/meu-template/preview.svg",
+  "framePath": "assets/templates/meu-template/frame.png",
   "canvas": { "width": 1080, "height": 1920 },
   "videoBox": { "x": 90, "y": 620, "width": 900, "height": 1120 }
 }

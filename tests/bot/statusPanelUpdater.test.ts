@@ -13,7 +13,7 @@ describe("createTelegramStatusPanelUpdater", () => {
       }
     });
     const batch = {
-      ...selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-crocodilo"),
+      ...selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-cachorro"),
       status: "rendering" as const,
       statusPanelChatId: "123",
       statusPanelMessageId: 456,

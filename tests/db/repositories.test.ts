@@ -14,7 +14,7 @@ describe("db repository mappers", () => {
       id: "batch-1",
       user_id: "user-1",
       telegram_user_id: "123",
-      template_id: "humor-crocodilo",
+      template_id: "humor-cachorro",
       status: "settings",
       settings_json: JSON.stringify(DEFAULT_BATCH_SETTINGS),
       status_panel_chat_id: "123",
@@ -28,7 +28,7 @@ describe("db repository mappers", () => {
       id: "batch-1",
       telegramUserId: "123",
       status: "settings",
-      templateId: "humor-crocodilo",
+      templateId: "humor-cachorro",
       statusPanelChatId: "123",
       statusPanelMessageId: 456,
       outputZipUrl: "https://files.example.com/batch-1.zip",
@@ -75,7 +75,7 @@ describe("LibsqlBatchRepository", () => {
     let batch = createDraftBatch({ id: "batch-1", telegramUserId: "123" });
     await repository.createBatch(batch, "bruno");
 
-    batch = selectTemplate(batch, "humor-crocodilo");
+    batch = selectTemplate(batch, "humor-cachorro");
     batch = receiveVideo(batch, { id: "video-1", fileId: "file-1", fileName: "clip.mp4", sizeBytes: 1024 }, 50);
     batch = {
       ...batch,
@@ -99,7 +99,7 @@ describe("LibsqlBatchRepository", () => {
       id: "batch-1",
       telegramUserId: "123",
       status: "receiving",
-      templateId: "humor-crocodilo",
+      templateId: "humor-cachorro",
       statusPanelChatId: "123",
       statusPanelMessageId: 456,
       outputZipUrl: "https://files.example.com/batch-1.zip",
