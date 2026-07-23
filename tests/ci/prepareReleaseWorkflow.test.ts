@@ -26,6 +26,9 @@ describe("prepare-release workflow", () => {
     expect(workflow).toContain("already exists. Skipping version bump");
     expect(workflow).toContain("gh pr list");
     expect(workflow).toContain("Pull request already exists");
+    expect(workflow).toContain("should_trigger_checks=false");
+    expect(workflow).toContain("should_trigger_checks=true");
+    expect(workflow).toContain("if: steps.pull-request.outputs.should_trigger_checks == 'true'");
     expect(workflow).toContain("Allow GitHub Actions to create and approve pull requests");
     expect(workflow).toContain('TAG_NAME="v${VERSION}"');
     expect(workflow).toContain('BRANCH_NAME="release/${TAG_NAME}"');

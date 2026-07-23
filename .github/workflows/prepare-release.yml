@@ -93,6 +93,7 @@ jobs:
           git push origin "${BRANCH_NAME}"
 
       - name: Create pull request
+        id: pull-request
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -109,6 +110,7 @@ jobs:
 
           if [ -n "${EXISTING_PR}" ]; then
             echo "release_pr_url=${EXISTING_PR}" >> "${GITHUB_ENV}"
+            echo "should_trigger_checks=false" >> "${GITHUB_OUTPUT}"
             echo "Pull request already exists: ${EXISTING_PR}" >> "${GITHUB_STEP_SUMMARY}"
             exit 0
           fi
@@ -150,9 +152,11 @@ jobs:
           fi
 
           echo "release_pr_url=${PR_URL}" >> "${GITHUB_ENV}"
+          echo "should_trigger_checks=true" >> "${GITHUB_OUTPUT}"
           echo "Created ${PR_URL}" >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Trigger PR checks
+        if: steps.pull-request.outputs.should_trigger_checks == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
