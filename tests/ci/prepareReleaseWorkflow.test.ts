@@ -18,6 +18,9 @@ describe("prepare-release workflow", () => {
     expect(workflow).toContain("pull-requests: write");
     expect(workflow).toContain("ref: main");
     expect(workflow).toContain("node-version: 22");
+    expect(workflow).toContain("repos/${GITHUB_REPOSITORY}/actions/permissions/workflow");
+    expect(workflow).toContain("can_approve_pull_request_reviews");
+    expect(workflow).toContain("Allow GitHub Actions to create and approve pull requests");
     expect(workflow).toContain('TAG_NAME="v${VERSION}"');
     expect(workflow).toContain('BRANCH_NAME="release/${TAG_NAME}"');
     expect(workflow).toContain("git ls-remote --exit-code --tags origin");

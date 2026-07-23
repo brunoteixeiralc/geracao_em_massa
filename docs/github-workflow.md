@@ -68,6 +68,9 @@ Recommended release steps through GitHub Actions:
 7. Merge the pull request into `main`.
 8. Let `.github/workflows/auto-release.yml` create `v<version>` and the GitHub Release.
 
+For the workflow to open pull requests, enable this repository setting once:
+`Settings > Actions > General > Workflow permissions > Allow GitHub Actions to create and approve pull requests`.
+
 Manual fallback:
 
 1. Create a branch for the version bump.

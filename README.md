@@ -287,6 +287,8 @@ Fluxo recomendado pelo GitHub:
 6. Depois que os checks passarem, faca o merge da PR.
 7. O workflow `Auto Release From Main` cria a tag e a GitHub Release automaticamente.
 
+Para o passo de abrir PR funcionar, habilite uma vez em `Settings > Actions > General > Workflow permissions` a opcao `Allow GitHub Actions to create and approve pull requests`.
+
 Fluxo manual de fallback para publicar `v0.4.0`:
 
 ```bash
