@@ -36,26 +36,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Verify pull request automation permission
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          CAN_CREATE_PR="$(
-            gh api "repos/${GITHUB_REPOSITORY}/actions/permissions/workflow" \
-              --jq ".can_approve_pull_request_reviews"
-          )"
-
-          if [ "${CAN_CREATE_PR}" != "true" ]; then
-            echo "GitHub Actions is not allowed to create pull requests in this repository."
-            echo ""
-            echo "Enable it in:"
-            echo "Settings > Actions > General > Workflow permissions"
-            echo ""
-            echo "Turn on:"
-            echo "Allow GitHub Actions to create and approve pull requests"
-            exit 1
-          fi
-
       - name: Resolve release inputs
         id: release
         run: |
@@ -64,6 +44,7 @@ jobs:
           TAG_NAME="v${VERSION}"
           BRANCH_NAME="release/${TAG_NAME}"
           CURRENT_VERSION="$(node -p "require('./package.json').version")"
+          BRANCH_EXISTS="false"
 
           if ! echo "${TAG_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
             echo "Release version must use semver, for example 0.8.0 or v0.8.0-beta.1"
@@ -81,13 +62,13 @@ jobs:
           fi
 
           if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
-            echo "Branch ${BRANCH_NAME} already exists"
-            exit 1
+            BRANCH_EXISTS="true"
           fi
 
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
           echo "tag_name=${TAG_NAME}" >> "${GITHUB_OUTPUT}"
           echo "branch_name=${BRANCH_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "branch_exists=${BRANCH_EXISTS}" >> "${GITHUB_OUTPUT}"
 
       - name: Configure Git author
         run: |
@@ -98,6 +79,12 @@ jobs:
         run: |
           BRANCH_NAME="${{ steps.release.outputs.branch_name }}"
           VERSION="${{ steps.release.outputs.version }}"
+          BRANCH_EXISTS="${{ steps.release.outputs.branch_exists }}"
+
+          if [ "${BRANCH_EXISTS}" = "true" ]; then
+            echo "Branch ${BRANCH_NAME} already exists. Skipping version bump and reusing it for PR creation."
+            exit 0
+          fi
 
           git switch -c "${BRANCH_NAME}"
           npm version "${VERSION}" --no-git-tag-version
@@ -113,6 +100,20 @@ jobs:
           TAG_NAME="${{ steps.release.outputs.tag_name }}"
           BRANCH_NAME="${{ steps.release.outputs.branch_name }}"
 
+          EXISTING_PR="$(
+            gh pr list \
+              --head "${BRANCH_NAME}" \
+              --json url \
+              --jq '.[0].url // ""'
+          )"
+
+          if [ -n "${EXISTING_PR}" ]; then
+            echo "release_pr_url=${EXISTING_PR}" >> "${GITHUB_ENV}"
+            echo "Pull request already exists: ${EXISTING_PR}" >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          set +e
           PR_URL="$(
             gh pr create \
               --base main \
@@ -126,7 +127,27 @@ jobs:
           ## Depois do merge
 
           O workflow Auto Release From Main vai validar a main, criar a tag ${TAG_NAME} e gerar a GitHub Release automaticamente."
+            2>pr-error.log
           )"
+          CREATE_PR_STATUS=$?
+          set -e
+
+          if [ "${CREATE_PR_STATUS}" -ne 0 ]; then
+            cat pr-error.log
+
+            if grep -Eq "not permitted to create|Resource not accessible by integration" pr-error.log; then
+              echo ""
+              echo "GitHub Actions is not allowed to create pull requests in this repository."
+              echo ""
+              echo "Enable it in:"
+              echo "Settings > Actions > General > Workflow permissions"
+              echo ""
+              echo "Turn on:"
+              echo "Allow GitHub Actions to create and approve pull requests"
+            fi
+
+            exit "${CREATE_PR_STATUS}"
+          fi
 
           echo "release_pr_url=${PR_URL}" >> "${GITHUB_ENV}"
           echo "Created ${PR_URL}" >> "${GITHUB_STEP_SUMMARY}"
