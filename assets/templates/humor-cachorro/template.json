@@ -1,0 +1,10 @@
+{
+  "id": "humor-cachorro",
+  "name": "Humor Cachorro",
+  "kind": "frame",
+  "previewPath": "assets/templates/humor-cachorro/frame.png",
+  "framePath": "assets/templates/humor-cachorro/frame.png",
+  "canvas": { "width": 1080, "height": 1920 },
+  "videoBox": { "x": 0, "y": 761, "width": 1080, "height": 1159 },
+  "keyColor": "#00FF01"
+}

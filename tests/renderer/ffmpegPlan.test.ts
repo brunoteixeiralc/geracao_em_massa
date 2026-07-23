@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { buildFfmpegArgs } from "../../src/renderer/ffmpegPlan.js";
-import { TEMPLATES } from "../../src/templates/templates.js";
+import { getTemplateById } from "../../src/templates/templates.js";
 import { DEFAULT_BATCH_SETTINGS } from "../../src/workflow/settings.js";
+
+const crocodiloTemplate = getTemplateById("humor-crocodilo")!;
+const cachorroTemplate = getTemplateById("humor-cachorro")!;
 
 describe("buildFfmpegArgs", () => {
   it("builds a 9:16 mp4 render command", () => {
     const args = buildFfmpegArgs({
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
-      template: TEMPLATES[0],
+      template: crocodiloTemplate,
       settings: DEFAULT_BATCH_SETTINGS
     });
 
@@ -24,7 +27,7 @@ describe("buildFfmpegArgs", () => {
     const args = buildFfmpegArgs({
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
-      template: TEMPLATES[0],
+      template: crocodiloTemplate,
       settings: DEFAULT_BATCH_SETTINGS
     });
     const joinedArgs = args.join(" ");
@@ -39,10 +42,10 @@ describe("buildFfmpegArgs", () => {
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
       template: {
-        ...TEMPLATES[0],
+        ...crocodiloTemplate,
         kind: "frame",
         framePath: "assets/templates/humor-crocodilo/frame.png"
-      } as typeof TEMPLATES[number],
+      },
       settings: DEFAULT_BATCH_SETTINGS
     });
     const joinedArgs = args.join(" ");
@@ -54,11 +57,24 @@ describe("buildFfmpegArgs", () => {
     expect(joinedArgs).toContain("[composed]");
   });
 
+  it("keys out a frame template marker color before overlaying it", () => {
+    const args = buildFfmpegArgs({
+      inputPath: "/tmp/in.mp4",
+      outputPath: "/tmp/out.mp4",
+      template: cachorroTemplate,
+      settings: DEFAULT_BATCH_SETTINGS
+    });
+    const joinedArgs = args.join(" ");
+
+    expect(joinedArgs).toContain("[1:v]format=rgba,colorkey=0x00ff01:0.03:0.0[frame]");
+    expect(joinedArgs).toContain("[video_on_canvas][frame]overlay=0:0:shortest=1");
+  });
+
   it("adds horizontal flip when mirror is enabled", () => {
     const args = buildFfmpegArgs({
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
-      template: TEMPLATES[0],
+      template: crocodiloTemplate,
       settings: { ...DEFAULT_BATCH_SETTINGS, mirror: true }
     });
 
@@ -69,7 +85,7 @@ describe("buildFfmpegArgs", () => {
     const args = buildFfmpegArgs({
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
-      template: TEMPLATES[0],
+      template: crocodiloTemplate,
       settings: { ...DEFAULT_BATCH_SETTINGS, trimStartSeconds: 0.3, trimEndSeconds: 0.7 },
       inputDurationSeconds: 10
     });

@@ -35,5 +35,12 @@ describe("file-backed templates", () => {
       kind: "frame",
       framePath: "assets/templates/humor-crocodilo/frame.png"
     });
+    expect(getTemplateById("humor-cachorro")).toMatchObject({
+      name: "Humor Cachorro",
+      kind: "frame",
+      framePath: "assets/templates/humor-cachorro/frame.png",
+      videoBox: { x: 0, y: 761, width: 1080, height: 1159 },
+      keyColor: "#00FF01"
+    });
   });
 });

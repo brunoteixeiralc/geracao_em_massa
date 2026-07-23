@@ -33,7 +33,10 @@ export function buildFfmpegArgs(input: FfmpegPlanInput): string[] {
 
   if (template.kind === "frame") {
     inputArgs.push("-loop", "1", "-i", template.framePath);
-    filters.push("[1:v]format=rgba[frame]");
+    const frameFilter = template.keyColor
+      ? `[1:v]format=rgba,colorkey=${toFfmpegColor(template.keyColor)}:0.03:0.0[frame]`
+      : "[1:v]format=rgba[frame]";
+    filters.push(frameFilter);
     filters.push("[video_on_canvas][frame]overlay=0:0:shortest=1,format=yuv420p[composed]");
   } else {
     filters.push("[video_on_canvas]format=yuv420p[composed]");
@@ -71,4 +74,8 @@ function speedSetPts(speed: number) {
 
 function roundOneDecimal(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+function toFfmpegColor(hexColor: string) {
+  return `0x${hexColor.slice(1).toLowerCase()}`;
 }

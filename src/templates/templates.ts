@@ -22,11 +22,16 @@ export type TemplateDefinition = {
   | {
       kind: "frame";
       framePath: string;
+      keyColor?: string;
     }
 );
 
 const relativeAssetPath = z.string().min(1).refine((path) => !path.startsWith("/") && !path.includes(".."), {
   message: "must be a relative path inside the repository"
+});
+
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, {
+  message: "must be a hex color like #00FF00"
 });
 
 const baseTemplateSchema = z
@@ -62,7 +67,8 @@ const profileTemplateSchema = baseTemplateSchema
 const frameTemplateSchema = baseTemplateSchema
   .extend({
     kind: z.literal("frame"),
-    framePath: relativeAssetPath
+    framePath: relativeAssetPath,
+    keyColor: hexColor.optional()
   })
   .strict();
 

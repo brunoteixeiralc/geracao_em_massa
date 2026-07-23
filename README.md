@@ -331,7 +331,14 @@ docs/
 
 ## Templates
 
-Os templates fixos ficam versionados no GitHub em `assets/templates/<id>/template.json`. Para templates prontos, use `kind: "frame"` com um `frame.png` em 1080x1920. Esse PNG deve ter transparencia na area onde o video entra; tudo que estiver opaco no PNG aparece por cima do Reel final.
+Os templates fixos ficam versionados no GitHub em `assets/templates/<id>/template.json`. Para templates prontos, use `kind: "frame"` com um `frame.png` em 1080x1920.
+
+Existem dois jeitos de abrir a area do video:
+
+- exportar um PNG com transparencia real na area onde o video entra;
+- exportar um PNG normal com uma cor-chave artificial nessa area, como `#00FF01`, e declarar `keyColor` no JSON.
+
+Tudo que estiver opaco no PNG aparece por cima do Reel final. Se `keyColor` existir, essa cor e removida do frame antes da sobreposicao.
 
 Exemplo:
 
@@ -341,6 +348,9 @@ assets/templates/
     template.json
     frame.png
     preview.svg
+  humor-cachorro/
+    template.json
+    frame.png
 ```
 
 Exemplo de `template.json` para template pronto:
@@ -358,6 +368,23 @@ Exemplo de `template.json` para template pronto:
 ```
 
 `videoBox` define onde o video sera encaixado dentro do canvas final, em pixels. No exemplo acima, o video e cortado no modo cover para `900x1120` e posicionado em `x=90`, `y=620`.
+
+Exemplo com cor-chave exportada do Canva:
+
+```json
+{
+  "id": "humor-cachorro",
+  "name": "Humor Cachorro",
+  "kind": "frame",
+  "previewPath": "assets/templates/humor-cachorro/frame.png",
+  "framePath": "assets/templates/humor-cachorro/frame.png",
+  "canvas": { "width": 1080, "height": 1920 },
+  "videoBox": { "x": 0, "y": 761, "width": 1080, "height": 1159 },
+  "keyColor": "#00FF01"
+}
+```
+
+Use uma cor que nao apareca em nenhuma outra parte do template. Para Canva, confira um pixel da area colorida antes de preencher `keyColor`, pois pequenas variacoes como `#00FF01` podem acontecer no export.
 
 O bot carrega automaticamente os templates validos dessa pasta. Se um `template.json` estiver invalido ou apontar para asset inexistente, os testes falham antes do deploy.
 
