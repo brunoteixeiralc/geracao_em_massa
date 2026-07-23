@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const workflowPath = join(process.cwd(), ".github", "workflows", "prepare-release.yml");
+const ciWorkflowPath = join(process.cwd(), ".github", "workflows", "ci.yml");
+const codeqlWorkflowPath = join(process.cwd(), ".github", "workflows", "codeql.yml");
 
 describe("prepare-release workflow", () => {
   test("creates a version bump pull request from a manual GitHub Actions run", () => {
@@ -34,5 +36,7 @@ describe("prepare-release workflow", () => {
     expect(workflow).not.toContain("git tag -a");
     expect(workflow).toContain("gh workflow run ci.yml");
     expect(workflow).toContain("gh workflow run codeql.yml");
+    expect(readFileSync(ciWorkflowPath, "utf8")).toContain("workflow_dispatch:");
+    expect(readFileSync(codeqlWorkflowPath, "utf8")).toContain("workflow_dispatch:");
   });
 });
