@@ -19,13 +19,18 @@ export function buildFfmpegArgs(input: FfmpegPlanInput): string[] {
     ? `trim=start=${settings.trimStartSeconds}:end=${roundOneDecimal(trimEnd)}`
     : `trim=start=${settings.trimStartSeconds}`;
   const inputArgs = ["-i", input.inputPath];
+  const canvasRate = settings.antiduplication ? ":r=30" : "";
   const filters = [
-    `color=c=white:s=${template.canvas.width}x${template.canvas.height}[canvas]`,
+    `color=c=white:s=${template.canvas.width}x${template.canvas.height}${canvasRate}[canvas]`,
     `[0:v]${trimFilter},setpts=${speedSetPts(settings.speed)},scale=${scaledWidth}:${scaledHeight}:force_original_aspect_ratio=increase,crop=${template.videoBox.width}:${template.videoBox.height}`
   ];
 
   if (settings.mirror) {
     filters[1] += ",hflip";
+  }
+
+  if (settings.antiduplication) {
+    filters[1] += ",fps=30,setsar=1";
   }
 
   filters[1] += "[video]";
@@ -51,6 +56,7 @@ export function buildFfmpegArgs(input: FfmpegPlanInput): string[] {
     "[composed]",
     "-map",
     "0:a?",
+    ...(settings.antiduplication ? ["-map_metadata", "-1", "-map_chapters", "-1"] : []),
     "-c:v",
     "libx264",
     "-preset",

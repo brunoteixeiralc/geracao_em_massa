@@ -92,4 +92,33 @@ describe("buildFfmpegArgs", () => {
 
     expect(args.join(" ")).toContain("trim=start=0.3:end=9.3");
   });
+
+  it("applies safe antiduplication normalization when enabled", () => {
+    const args = buildFfmpegArgs({
+      inputPath: "/tmp/in.mp4",
+      outputPath: "/tmp/out.mp4",
+      template: crocodiloTemplate,
+      settings: { ...DEFAULT_BATCH_SETTINGS, antiduplication: true }
+    });
+    const joinedArgs = args.join(" ");
+
+    expect(joinedArgs).toContain("color=c=white:s=1080x1920:r=30[canvas]");
+    expect(joinedArgs).toContain("fps=30,setsar=1[video]");
+    expect(joinedArgs).toContain("-map_metadata -1");
+    expect(joinedArgs).toContain("-map_chapters -1");
+  });
+
+  it("keeps the render command untouched by antiduplication when disabled", () => {
+    const args = buildFfmpegArgs({
+      inputPath: "/tmp/in.mp4",
+      outputPath: "/tmp/out.mp4",
+      template: crocodiloTemplate,
+      settings: { ...DEFAULT_BATCH_SETTINGS, antiduplication: false }
+    });
+    const joinedArgs = args.join(" ");
+
+    expect(joinedArgs).not.toContain("fps=30,setsar=1[video]");
+    expect(joinedArgs).not.toContain("-map_metadata -1");
+    expect(joinedArgs).not.toContain("-map_chapters -1");
+  });
 });

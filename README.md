@@ -44,6 +44,20 @@ Comandos iniciais:
 
 Durante o lote, o bot usa botoes inline para escolher template, finalizar envio, alterar ajustes globais e enviar o trabalho para a fila.
 
+## Antiduplicidade Segura
+
+A opcao de antiduplicidade aplica uma normalizacao tecnica conservadora no render final. Ela nao injeta ruido invisivel nem desalinha quadros; o objetivo e gerar um arquivo limpo, padronizado e com identidade tecnica consistente do lote.
+
+Quando ligada, o FFmpeg:
+
+- remove metadados e capitulos herdados do arquivo original;
+- padroniza o video final em 30 FPS;
+- normaliza o SAR com `setsar=1`;
+- preserva audio quando o video original possui audio;
+- continua aceitando videos sem audio.
+
+Quando desligada, o render segue sem essa etapa extra.
+
 ## Status Atual
 
 Fundacao tecnica do MVP ja preparada:
