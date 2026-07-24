@@ -135,6 +135,8 @@ npm run start
 npm run start:worker
 npm run test:unit
 npm run test:coverage
+npm run templates:list
+npm run templates:create-frame -- --frame ~/Downloads/frame.png --id humor-gato --name "Humor Gato"
 npm run templates:validate
 npm run templates:smoke
 npm audit --audit-level=high
@@ -145,6 +147,20 @@ GitHub CI runs build, unit tests, template validation, coverage, and dependency 
 ## Templates
 
 Each template lives in `assets/templates/<id>/template.json` and references the assets used during rendering.
+
+See [TEMPLATES.md](./TEMPLATES.md) for the full template workflow.
+
+List available templates:
+
+```bash
+npm run templates:list
+```
+
+Create a frame template from a PNG exported with a `#00FF01` video placeholder:
+
+```bash
+npm run templates:create-frame -- --frame ~/Downloads/frame.png --id humor-gato --name "Humor Gato"
+```
 
 Before committing a new template, run:
 

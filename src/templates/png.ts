@@ -21,13 +21,53 @@ export function readPngInfo(filePath: string): PngInfo {
 }
 
 export function countPngRgbPixels(filePath: string, color: { red: number; green: number; blue: number }): number {
+  let matches = 0;
+  scanPngRgbPixels(filePath, (pixel) => {
+    if (pixel.alpha > 0 && pixel.red === color.red && pixel.green === color.green && pixel.blue === color.blue) {
+      matches += 1;
+    }
+  });
+
+  return matches;
+}
+
+export function findPngRgbBounds(filePath: string, color: { red: number; green: number; blue: number }) {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = -1;
+  let maxY = -1;
+
+  scanPngRgbPixels(filePath, (pixel) => {
+    if (pixel.alpha > 0 && pixel.red === color.red && pixel.green === color.green && pixel.blue === color.blue) {
+      minX = Math.min(minX, pixel.x);
+      minY = Math.min(minY, pixel.y);
+      maxX = Math.max(maxX, pixel.x);
+      maxY = Math.max(maxY, pixel.y);
+    }
+  });
+
+  if (maxX < 0 || maxY < 0) {
+    return undefined;
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1
+  };
+}
+
+function scanPngRgbPixels(
+  filePath: string,
+  visitPixel: (pixel: { x: number; y: number; red: number; green: number; blue: number; alpha: number }) => void
+) {
   const png = readPng(filePath);
   const bytesPerPixel = bytesPerPixelFor(png.info);
   const rowSize = png.info.width * bytesPerPixel;
   const inflated = inflateSync(Buffer.concat(png.idatChunks));
   let sourceOffset = 0;
   let previousRow = Buffer.alloc(rowSize);
-  let matches = 0;
 
   for (let y = 0; y < png.info.height; y += 1) {
     const filterType = inflated[sourceOffset];
@@ -43,15 +83,11 @@ export function countPngRgbPixels(filePath: string, color: { red: number; green:
       const blue = row[pixelOffset + 2];
       const alpha = bytesPerPixel === 4 ? row[pixelOffset + 3] : 255;
 
-      if (alpha > 0 && red === color.red && green === color.green && blue === color.blue) {
-        matches += 1;
-      }
+      visitPixel({ x, y, red, green, blue, alpha });
     }
 
     previousRow = row;
   }
-
-  return matches;
 }
 
 function readPng(filePath: string): PngData {
