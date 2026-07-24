@@ -62,7 +62,7 @@ describe("createTelegramBot", () => {
       method: "sendPhoto",
       payload: {
         chat_id: 123,
-        caption: "Template: Humor Cachorro"
+        caption: "Template: Humor Cachorro\nID: humor-cachorro\nTipo: frame"
       }
     });
     expect(calls[0]?.payload.reply_markup).toBeDefined();
@@ -89,6 +89,52 @@ describe("createTelegramBot", () => {
     expect(calls.map((call) => call.method)).toEqual(["sendPhoto", "sendMessage"]);
     expect(calls[1]?.payload.text).toContain("Escolha um template");
     expect(calls[1]?.payload.reply_markup).toBeDefined();
+  });
+
+  it("shows template previews from /templates without requiring an active batch", async () => {
+    const store = new MemoryBatchStore();
+    const calls = await handleUpdate(store, updateWithText("/templates", 123));
+
+    expect(calls.map((call) => call.method)).toEqual(["sendPhoto", "sendMessage"]);
+    expect(calls[0]).toMatchObject({
+      method: "sendPhoto",
+      payload: {
+        chat_id: 123,
+        caption: "Template: Humor Cachorro\nID: humor-cachorro\nTipo: frame"
+      }
+    });
+    expect(calls[0]?.payload.reply_markup).toBeUndefined();
+    expect(calls[1]?.payload.text).toContain("Templates disponiveis.");
+    expect(calls[1]?.payload.text).toContain("Use /novo para criar um lote");
+  });
+
+  it("shows selectable template previews from /templates when a draft batch exists", async () => {
+    const store = new MemoryBatchStore();
+    store.batch = {
+      id: "batch-1",
+      telegramUserId: "123",
+      status: "draft",
+      templateId: null,
+      outputZipUrl: null,
+      settings: {
+        autoCut: true,
+        zoomPercent: 105,
+        speed: 1,
+        mirror: false,
+        trimStartSeconds: 0.3,
+        trimEndSeconds: 0.3,
+        antiduplication: true,
+        cta: true,
+        watermark: false
+      },
+      videos: []
+    };
+
+    const calls = await handleUpdate(store, updateWithText("/templates", 123));
+
+    expect(calls.map((call) => call.method)).toEqual(["sendPhoto", "sendMessage"]);
+    expect(calls[0]?.payload.reply_markup).toBeDefined();
+    expect(calls[1]?.payload.text).toContain("aplicar ao lote atual");
   });
 
   it("shows the current batch status from /status", async () => {

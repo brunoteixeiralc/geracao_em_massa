@@ -41,6 +41,7 @@ Initial commands:
 
 - `/start` shows the initial bot message.
 - `/novo` creates a new batch and starts template selection.
+- `/templates` lists available templates with preview images.
 - `/status` shows the active or most recent batch, including the ZIP when available.
 
 During a batch, the bot uses inline buttons for template selection, finishing upload, changing global settings, cancelling, and submitting the job to the queue.

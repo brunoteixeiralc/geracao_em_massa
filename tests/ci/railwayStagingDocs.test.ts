@@ -1,37 +1,38 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
-const stagingGuidePath = join(process.cwd(), "docs", "railway-staging.md");
 const readProjectFile = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 
-function parseExampleEnvKeys() {
-  return readProjectFile(".env.example")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.startsWith("#"))
-    .map((line) => line.split("=")[0])
-    .filter((key): key is string => Boolean(key));
-}
+const migrationFiles = [
+  "db/migrations/001_initial_schema.sql",
+  "db/migrations/002_video_input_path.sql",
+  "db/migrations/003_video_output_path.sql"
+];
 
-describe("Railway staging guide", () => {
-  test("documents deployment services, environment variables, and smoke test", () => {
-    expect(existsSync(stagingGuidePath)).toBe(true);
+describe("repository privacy guardrails", () => {
+  test("keeps internal docs and local data ignored without hiding production migrations", () => {
+    const gitignore = readProjectFile(".gitignore");
+    const migrateScript = readProjectFile("src/db/migrate.ts");
+    const packageJson = JSON.parse(readProjectFile("package.json")) as {
+      scripts?: Record<string, string>;
+    };
 
-    const guide = readFileSync(stagingGuidePath, "utf8");
+    expect(gitignore).toContain("docs/");
+    expect(gitignore).toContain("*.db");
+    expect(gitignore).toContain("*.sqlite");
+    expect(gitignore).toContain("*.sqlite3");
+    expect(gitignore).toContain("db/backups/");
+    expect(gitignore).toContain("db/dumps/");
+    expect(gitignore).toContain("db/migrations/*.local.sql");
+    expect(gitignore).toContain("db/migrations/*.private.sql");
+    expect(gitignore).toContain("db/migrations/*secret*.sql");
 
-    expect(guide).toContain("npm run start");
-    expect(guide).toContain("npm run start:worker");
-    expect(guide).toContain("/health");
-    expect(guide).toContain("/telegram/${TELEGRAM_WEBHOOK_SECRET}");
-    expect(guide).toContain("npm run db:migrate");
-    expect(guide).toContain("Smoke Test");
-    expect(guide).toContain("Turso");
-    expect(guide).toContain("Redis");
-    expect(guide).toContain("S3/R2");
+    expect(packageJson.scripts?.["db:migrate"]).toBe("tsx src/db/migrate.ts");
+    expect(migrateScript).toContain('"db/migrations"');
 
-    for (const key of parseExampleEnvKeys()) {
-      expect(guide).toContain(key);
+    for (const migrationFile of migrationFiles) {
+      expect(readProjectFile(migrationFile).trim().length).toBeGreaterThan(0);
     }
   });
 });
