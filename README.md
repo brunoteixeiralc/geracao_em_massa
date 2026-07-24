@@ -1,131 +1,133 @@
-# Geracao Em Massa Reels
+# Bulk Reels Generator
 
-App Telegram-first para gerar Reels em lote para Instagram.
+Telegram-first app for generating Instagram Reels in bulk.
 
-O objetivo do projeto e substituir uma interface web por um fluxo direto no Telegram: o usuario envia um lote de videos, escolhe um template fixo, aplica ajustes globais ao lote inteiro, acompanha o processamento em tempo real e recebe os Reels prontos pelo Telegram, com suporte a ZIP para baixar tudo de uma vez.
+This project replaces a traditional web interface with a direct Telegram workflow: send a batch of videos, choose a reusable template, apply global settings to the whole batch, follow live processing status, and receive the finished Reels through Telegram, including a ZIP file for downloading everything at once.
 
-## Objetivo
+## Purpose
 
-Criar um sistema rapido, seguro e simples de operar para geracao em massa de Reels.
+Build a fast, safe, and easy-to-operate system for bulk Reels generation.
 
-Escopo principal:
+Main scope:
 
-- somente Reels em formato vertical;
-- templates fixos reutilizaveis;
-- videos de entrada normalmente com ate 20 MB;
-- lotes com ate 50 videos;
-- ajustes padrao globais por lote;
-- painel vivo de status no Telegram;
-- processamento no servidor;
-- fila Redis/BullMQ para processar lotes;
-- worker separado para baixar arquivos do Telegram e renderizar com FFmpeg;
-- persistencia no Turso;
-- deploy no Railway;
-- entrega individual pelo Telegram e pacote `.zip` ao final;
-- testes unitarios como prioridade desde o inicio.
+- vertical Reels only;
+- reusable fixed templates;
+- input videos usually up to 20 MB each;
+- batches with up to 50 videos;
+- global settings applied to the whole batch;
+- live Telegram status panel;
+- server-side processing;
+- Redis/BullMQ queue for batch processing;
+- separate worker for downloading Telegram files and rendering with FFmpeg;
+- Turso/libSQL persistence;
+- Railway deployment;
+- individual Telegram delivery and final `.zip` delivery;
+- unit tests prioritized from the MVP stage.
 
-## Fluxo No Telegram
+## Telegram Flow
 
-1. O usuario inicia um novo trabalho pelo bot.
-2. O bot mostra o template ativo ou permite escolher outro template fixo.
-3. O usuario envia os videos do lote.
-4. O bot valida quantidade, tamanho e tipo dos arquivos.
-5. O usuario confirma os ajustes globais do lote, como zoom, velocidade, cortes, espelhamento, CTA, marca d'agua e antiduplicidade.
-6. O bot cria o lote, salva o estado no Turso e envia para a fila.
-7. O worker baixa os arquivos originais do Telegram para `WORK_DIR`.
-8. O worker valida os caminhos locais e renderiza os videos com FFprobe/FFmpeg.
-9. O worker cria o ZIP, envia MP4s/ZIP para storage S3/R2 e salva as URLs no Turso.
-10. O bot entrega os Reels prontos quando couberem no limite do Telegram e sempre envia o link do `.zip`.
+1. The user starts a new batch in the Telegram bot.
+2. The bot shows the active template or lets the user choose another fixed template.
+3. The user sends the videos for the batch.
+4. The bot validates quantity, size, and real file type.
+5. The user reviews global settings such as zoom, speed, trimming, mirroring, CTA, watermark, and antiduplication.
+6. The bot saves the batch state in Turso and sends the job to the queue.
+7. The worker downloads the original Telegram files to `WORK_DIR`.
+8. The worker validates local paths and renders the videos with FFprobe/FFmpeg.
+9. The worker creates the ZIP, uploads MP4s/ZIP to S3-compatible storage, and saves URLs in Turso.
+10. The bot delivers the finished Reels when they fit Telegram limits and always sends the final `.zip` link.
 
-Comandos iniciais:
+Initial commands:
 
-- `/start` mostra a mensagem inicial do bot.
-- `/novo` cria um novo lote e abre a escolha de template.
-- `/templates` lista os templates disponiveis com preview.
-- `/status` mostra o lote ativo ou o ultimo lote recente, incluindo ZIP quando disponivel.
+- `/start` shows the initial bot message.
+- `/novo` creates a new batch and starts template selection.
+- `/templates` lists available templates with preview images.
+- `/status` shows the active or most recent batch, including the ZIP when available.
 
-Durante o lote, o bot usa botoes inline para escolher template, finalizar envio, alterar ajustes globais e enviar o trabalho para a fila.
+During a batch, the bot uses inline buttons for template selection, finishing upload, changing global settings, cancelling, and submitting the job to the queue.
 
-## Antiduplicidade Segura
+## Safe Antiduplication
 
-A opcao de antiduplicidade aplica variacoes tecnicas leves e deterministicas por video. O objetivo e gerar Reels limpos, visualmente fieis ao template e com assinatura tecnica diferente entre arquivos do mesmo lote.
+The antiduplication option applies lightweight deterministic technical variations per video. The goal is to keep the final Reels clean and faithful to the template while giving each rendered file a different technical signature.
 
-Quando ligada, o FFmpeg:
+When enabled, FFmpeg:
 
-- remove metadados e capitulos herdados do arquivo original;
-- padroniza o video final em 30 FPS;
-- normaliza o SAR com `setsar=1`;
-- aplica microvariacoes de brilho, contraste e saturacao;
-- injeta ruido visual muito leve no video de entrada antes da composicao com o template;
-- varia CRF e GOP dentro de uma faixa conservadora;
-- reamostra o audio para 48 kHz e aplica uma mascara leve de volume/frequencia quando ha audio;
-- continua aceitando videos sem audio por meio de `0:a?`.
+- removes inherited metadata and chapters from the original file;
+- standardizes the final video to 30 FPS;
+- normalizes SAR with `setsar=1`;
+- applies tiny brightness, contrast, and saturation variations;
+- injects very light visual noise before template composition;
+- varies CRF and GOP inside a conservative range;
+- resamples audio to 48 kHz and applies a subtle volume/frequency mask when audio exists;
+- still accepts videos without audio through `0:a?`.
 
-Quando desligada, o render segue sem essa etapa extra.
+When disabled, rendering skips these extra variation steps.
 
-## Status Atual
+## Current Status
 
-Fundacao tecnica do MVP ja preparada:
+The MVP technical foundation is already prepared:
 
-- configuracao tipada de ambiente;
-- validacao de acesso por usuario autorizado do Telegram;
-- validacao de midia de entrada;
-- modelo de status do lote e progresso;
-- regras de ajustes globais por lote;
-- templates fixos iniciais;
-- renderizacao e atualizacao ao vivo do painel de status do Telegram;
-- fila BullMQ para enfileirar lotes;
-- worker inicial para baixar videos do Telegram e renderizar MP4s locais;
-- executor FFprobe/FFmpeg sem shell para gerar Reels 9:16;
-- empacotamento ZIP dos videos renderizados;
-- upload S3/R2 de MP4s e ZIP;
-- entrega final pelo Telegram com videos individuais e link do ZIP;
-- schema inicial do banco Turso/libSQL;
-- repositorios de persistencia;
-- testes unitarios das regras principais;
-- workflows GitHub para CI, auditoria e CodeQL.
+- typed environment configuration;
+- Telegram trusted-user access control;
+- input media validation;
+- batch status and progress model;
+- global settings rules per batch;
+- fixed initial templates;
+- live Telegram status panel rendering and updates;
+- BullMQ queue for batch jobs;
+- worker for Telegram downloads and local MP4 rendering;
+- shell-free FFprobe/FFmpeg executor for 9:16 Reels;
+- ZIP packaging for rendered videos;
+- S3/R2 upload for MP4s and ZIPs;
+- final Telegram delivery with individual videos and ZIP link;
+- initial Turso/libSQL database schema;
+- persistence repositories;
+- unit tests for core rules;
+- GitHub workflows for CI, dependency audit, releases, and CodeQL.
 
-## Stack
+## Tech Stack
 
-| Lib | Onde entra | Por que foi escolhida |
+| Library | Role | Why it is used |
 | --- | --- | --- |
-| `grammy` | Bot do Telegram | Biblioteca moderna, tipada e objetiva para criar comandos, conversas, botoes e respostas no Telegram. |
-| `@grammyjs/runner` | Execucao do bot | Ajuda a rodar o bot de forma mais robusta, com melhor controle de concorrencia e graceful shutdown. |
-| `fastify` | Servidor HTTP | Framework rapido e leve para webhooks do Telegram, health checks e rotas internas no Railway. |
-| `@fastify/helmet` | Headers de seguranca | Adiciona headers HTTP seguros por padrao, reduzindo riscos comuns em APIs expostas. |
-| `@fastify/rate-limit` | Protecao de abuso | Limita excesso de requisicoes, ajudando contra spam, loops e tentativas simples de abuso. |
-| `@libsql/client` | Banco Turso | SDK oficial compativel com libSQL/Turso para persistir lotes, videos, eventos e resultados. |
-| `bullmq` | Fila de jobs | Controla o processamento assincrono dos lotes, com retry, status e separacao entre bot e worker. |
-| `ioredis` | Conexao Redis | Cliente Redis usado pelo BullMQ, adequado para filas em producao. |
-| `@aws-sdk/client-s3` | Armazenamento | Envia os arquivos prontos para storage compativel com S3, como Cloudflare R2, AWS S3 ou similares. |
-| `@aws-sdk/s3-request-presigner` | Links temporarios | Gera links assinados para entregar arquivos grandes ou ZIPs com prazo controlado. |
-| `archiver` | ZIP final | Cria o pacote `.zip` com todos os Reels do lote. |
-| `file-type` | Validacao de arquivo | Detecta o tipo real do arquivo por assinatura binaria, evitando confiar apenas no nome do arquivo. |
-| `zod` | Validacao de dados | Valida variaveis de ambiente, payloads e configuracoes com mensagens claras e tipos seguros. |
-| `dotenv` | Ambiente local | Carrega `.env` no desenvolvimento sem colocar segredos no Git. |
-| `nanoid` | IDs internos | Gera IDs curtos e seguros para lotes, jobs e arquivos. |
-| `pino` | Logs | Logger rapido e estruturado, bom para Railway, debug e observabilidade. |
-| `typescript` | Base do codigo | Reduz erro em tempo de desenvolvimento e melhora manutencao. |
-| `tsx` | Execucao local TS | Roda scripts TypeScript no desenvolvimento, como servidor e migrations. |
-| `vitest` | Testes unitarios | Test runner rapido para TypeScript, ideal para manter regras do app protegidas. |
-| `@vitest/coverage-v8` | Cobertura | Gera relatorios de cobertura usando V8, integrado ao Vitest. |
+| `grammy` | Telegram bot | Modern typed Telegram framework for commands, inline buttons, and bot responses. |
+| `@grammyjs/runner` | Bot execution | Improves runtime control, concurrency, and graceful shutdown. |
+| `fastify` | HTTP server | Fast and lightweight server for Telegram webhooks, health checks, and Railway routes. |
+| `@fastify/helmet` | Security headers | Adds safer HTTP headers by default. |
+| `@fastify/rate-limit` | Abuse protection | Reduces spam, loops, and basic endpoint abuse. |
+| `@libsql/client` | Turso database | Official libSQL/Turso-compatible SDK for batches, videos, events, and results. |
+| `bullmq` | Job queue | Handles asynchronous batch processing, retries, and separation between bot and worker. |
+| `ioredis` | Redis connection | Redis client used by BullMQ in production. |
+| `@aws-sdk/client-s3` | Storage | Uploads generated files to S3-compatible storage such as Cloudflare R2 or AWS S3. |
+| `@aws-sdk/s3-request-presigner` | Temporary URLs | Creates signed links for large file or ZIP delivery. |
+| `archiver` | ZIP packaging | Creates the final `.zip` file with all Reels from the batch. |
+| `file-type` | File validation | Detects the real file type from binary signatures instead of trusting the file name. |
+| `zod` | Data validation | Validates environment variables, payloads, and settings with clear errors and safe types. |
+| `dotenv` | Local environment | Loads `.env` during local development without committing secrets. |
+| `nanoid` | Internal IDs | Generates short secure IDs for batches, jobs, and files. |
+| `pino` | Logging | Fast structured logger suited for Railway and production debugging. |
+| `typescript` | Codebase | Reduces development-time errors and improves maintainability. |
+| `tsx` | Local TS execution | Runs TypeScript scripts locally, including server and migrations. |
+| `vitest` | Unit tests | Fast TypeScript-friendly test runner for protecting app behavior. |
+| `@vitest/coverage-v8` | Coverage | Generates V8-based coverage reports integrated with Vitest. |
 
-## Decisoes De Seguranca
+## Security Decisions
 
-- O bot aceita apenas usuarios listados em `TRUSTED_TELEGRAM_USER_IDS`.
-- O webhook usa `TELEGRAM_WEBHOOK_SECRET` para reduzir chamadas falsas.
-- Arquivos sao validados por tamanho e tipo real, nao apenas por extensao.
-- Segredos ficam fora do Git, em `.env` local, Railway variables ou GitHub secrets quando necessario.
-- Rate limit fica no servidor HTTP para reduzir abuso de endpoints.
-- Headers seguros sao aplicados via `@fastify/helmet`.
-- URLs de download devem ser temporarias quando geradas por storage S3.
-- O pipeline deve falhar de forma visivel quando Turso, Redis, storage ou Telegram estiverem indisponiveis.
+- The bot only accepts users listed in `TRUSTED_TELEGRAM_USER_IDS`.
+- The webhook uses `TELEGRAM_WEBHOOK_SECRET` to reduce fake calls.
+- Files are validated by size and real binary type, not just extension.
+- Secrets stay out of Git and should live in local `.env`, Railway variables, or GitHub secrets.
+- HTTP endpoints are protected with rate limiting.
+- Safer HTTP headers are applied through `@fastify/helmet`.
+- Download URLs should be temporary when generated by S3-compatible storage.
+- The pipeline should fail visibly when Turso, Redis, storage, Telegram, or FFmpeg are unavailable.
 
-## Qualidade E Testes
+See [SECURITY.md](./SECURITY.md) for vulnerability reporting and secret-handling rules.
 
-O projeto prioriza testes unitarios desde o MVP. A ideia e proteger primeiro as regras que podem causar perda de lote, cobranca errada, arquivo invalido ou painel de status incorreto.
+## Quality And Tests
 
-Comandos principais:
+The project prioritizes unit tests from the MVP. The main goal is to protect rules that could cause lost batches, invalid files, incorrect rendering, broken delivery, or misleading status panels.
+
+Main commands:
 
 ```bash
 npm run build
@@ -138,317 +140,135 @@ npm run templates:smoke
 npm audit --audit-level=high
 ```
 
-O CI do GitHub executa build, testes, validacao estatica de templates, cobertura e auditoria de dependencias.
+GitHub CI runs build, unit tests, template validation, coverage, and dependency audit.
 
 ## Templates
 
-Cada template fica em `assets/templates/<id>/template.json` e referencia os assets usados na renderizacao.
+Each template lives in `assets/templates/<id>/template.json` and references the assets used during rendering.
 
-Antes de subir um template novo, rode:
+Before committing a new template, run:
 
 ```bash
 npm run templates:validate
 ```
 
-Esse comando valida:
+This validates:
 
-- schema do `template.json`;
-- existencia de `previewPath`, `framePath` ou `avatarPath`;
-- dimensoes PNG iguais ao `canvas`;
-- `videoBox` dentro do canvas;
-- cobertura minima de `keyColor` em templates `kind: "frame"`.
+- `template.json` schema;
+- `previewPath`, `framePath`, or `avatarPath` existence;
+- PNG dimensions matching the template `canvas`;
+- `videoBox` inside the canvas;
+- minimum `keyColor` coverage for `kind: "frame"` templates.
 
-Para fazer um smoke local com FFmpeg, rode:
+To run a local FFmpeg smoke test:
 
 ```bash
 npm run templates:smoke
 ```
 
-Esse comando cria um video sintetico curto e tenta renderizar todos os templates com o mesmo plano usado pelo worker.
+This creates a short synthetic video and tries to render every template using the same rendering plan used by the worker.
 
-## Ambiente Local
+## Local Development
 
-Use Node.js 22 ou superior.
+Use Node.js 22 or newer.
 
-Instale as dependencias:
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-Copie o arquivo de exemplo:
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Preencha os valores reais no `.env`.
+Fill `.env` with real local values.
 
-Variaveis principais:
+Main environment variables:
 
-| Variavel | Uso |
+| Variable | Purpose |
 | --- | --- |
-| `NODE_ENV` | Ambiente da aplicacao. |
-| `PORT` | Porta HTTP usada pelo Fastify. |
-| `TELEGRAM_BOT_TOKEN` | Token do bot criado no Telegram. |
-| `TELEGRAM_WEBHOOK_SECRET` | Segredo enviado pelo Telegram no webhook. |
-| `TRUSTED_TELEGRAM_USER_IDS` | Lista de usuarios autorizados. |
-| `PUBLIC_WEBHOOK_BASE_URL` | URL publica do Railway para configurar webhook. |
-| `TURSO_DATABASE_URL` | URL do banco Turso/libSQL. |
-| `TURSO_AUTH_TOKEN` | Token de acesso ao Turso. |
-| `REDIS_URL` | Redis usado pelo BullMQ. |
-| `S3_ENDPOINT` | Endpoint do storage compativel com S3. |
-| `S3_REGION` | Regiao do storage. |
-| `S3_BUCKET` | Bucket onde os Reels prontos serao salvos. |
-| `S3_ACCESS_KEY_ID` | Chave de acesso do storage. |
-| `S3_SECRET_ACCESS_KEY` | Segredo do storage. |
-| `PUBLIC_ASSET_BASE_URL` | URL publica ou base para entrega de arquivos. |
-| `WORK_DIR` | Pasta privada de processamento local. Default: `.data/reels-bot`. |
-| `MAX_BATCH_VIDEOS` | Limite de videos por lote. |
-| `MAX_INPUT_BYTES` | Tamanho maximo por video de entrada. |
-| `MAX_TELEGRAM_SEND_BYTES` | Limite para envio direto pelo Telegram. |
-| `WORKER_CONCURRENCY` | Quantidade de jobs processados em paralelo. |
+| `NODE_ENV` | Application environment. |
+| `PORT` | HTTP port used by Fastify. |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token from BotFather. |
+| `TELEGRAM_WEBHOOK_SECRET` | Secret sent by Telegram in webhook requests. |
+| `TRUSTED_TELEGRAM_USER_IDS` | Authorized Telegram user IDs. |
+| `PUBLIC_WEBHOOK_BASE_URL` | Public Railway URL used for webhook setup. |
+| `TURSO_DATABASE_URL` | Turso/libSQL database URL. |
+| `TURSO_AUTH_TOKEN` | Turso access token. |
+| `REDIS_URL` | Redis URL used by BullMQ. |
+| `S3_ENDPOINT` | S3-compatible storage endpoint. |
+| `S3_REGION` | Storage region. |
+| `S3_BUCKET` | Bucket where generated Reels are stored. |
+| `S3_ACCESS_KEY_ID` | Storage access key. |
+| `S3_SECRET_ACCESS_KEY` | Storage secret key. |
+| `PUBLIC_ASSET_BASE_URL` | Public/base URL for file delivery. |
+| `WORK_DIR` | Private local processing folder. Default: `.data/reels-bot`. |
+| `MAX_BATCH_VIDEOS` | Maximum videos per batch. |
+| `MAX_INPUT_BYTES` | Maximum input size per video. |
+| `MAX_TELEGRAM_SEND_BYTES` | Maximum size for direct Telegram delivery. |
+| `WORKER_CONCURRENCY` | Number of jobs processed in parallel. |
 
-## Banco De Dados
+## Database
 
-O projeto usa Turso, baseado em libSQL/SQLite.
+The project uses Turso, based on libSQL/SQLite.
 
-Rodar migrations:
-
-```bash
-npm run db:migrate
-```
-
-O schema inicial cria tabelas para:
-
-- lotes;
-- videos do lote;
-- eventos de status;
-- resultados gerados.
-
-As migrations sao aplicadas em ordem com:
+Run migrations:
 
 ```bash
 npm run db:migrate
 ```
 
-## Deploy No Railway
+The initial schema creates tables for:
 
-O Railway sera usado para hospedar o servidor do bot e o worker de processamento.
+- batches;
+- batch videos;
+- status events;
+- generated results.
 
-Configuracao esperada:
+## Railway Deployment
 
-- variaveis de ambiente configuradas no Railway;
-- Turso acessivel por `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN`;
-- Redis disponivel para BullMQ;
-- storage S3/R2 configurado para arquivos prontos;
-- `WORK_DIR` apontando para uma pasta privada do container, fora de `/tmp`;
-- deploy usando o `Dockerfile`, que instala `ffmpeg` e `ffprobe`;
-- health check HTTP exposto pelo Fastify.
+Railway hosts two processes:
 
-Processo web:
+- `web`: Telegram webhook server and health checks;
+- `worker`: background renderer and delivery pipeline.
+
+Expected setup:
+
+- environment variables configured in Railway;
+- Turso available through `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`;
+- Redis available for BullMQ;
+- S3/R2 storage configured for generated files;
+- `WORK_DIR` pointing to a private container folder outside `/tmp`;
+- Docker deployment using the included `Dockerfile`, which installs `ffmpeg` and `ffprobe`;
+- HTTP health check exposed by Fastify.
+
+Web process:
 
 ```bash
 npm run build
 npm run start
 ```
 
-Processo worker:
+Worker process:
 
 ```bash
 npm run build
 npm run start:worker
 ```
 
-No Railway, o ideal e ter dois services usando o mesmo repositorio:
+## Repository Automation
 
-- `web`: recebe webhooks do Telegram e enfileira lotes;
-- `worker`: consome a fila BullMQ, baixa os arquivos do Telegram, valida duracao com FFprobe, renderiza MP4s, cria ZIP, faz upload S3/R2 e entrega o resultado no Telegram.
+The repository uses GitHub workflows for:
 
-O `Dockerfile` usa `npm run start` como comando padrao para o service `web`.
-No service `worker`, configure o comando inicial como:
+- CI checks;
+- test coverage;
+- template validation;
+- dependency audit;
+- CodeQL analysis;
+- release preparation;
+- automatic release/tag generation from `package.json`.
 
-```bash
-npm run start:worker
-```
-
-## GitHub
-
-O repositorio foi pensado para usar bastante o GitHub:
-
-- issues para planejar trabalho;
-- branches por issue ou feature;
-- pull requests para toda mudanca;
-- checklist de PR com testes e seguranca;
-- GitHub Actions para CI;
-- CodeQL para analise de seguranca em TypeScript;
-- Dependabot para dependencias npm e GitHub Actions;
-- GitHub Releases geradas automaticamente a partir da versao do `package.json`;
-- branch protection ou rulesets no `main`;
-- GitHub secrets apenas quando algum workflow realmente precisar.
-
-Veja tambem:
-
-- `docs/github-workflow.md`
-- `docs/railway-staging.md`
-- `SECURITY.md`
-
-## Releases
-
-Releases sao criadas automaticamente quando um merge na `main` traz uma versao nova no `package.json`.
-
-O workflow `.github/workflows/auto-release.yml` roda em todo push na `main`, executa `npm ci`, build, testes unitarios, cobertura e auditoria de seguranca. Se tudo passar, ele le a versao do `package.json`, monta a tag `vX.Y.Z`, verifica se essa tag ainda nao existe e cria a tag + GitHub Release com notas automaticas.
-
-Formato aceito:
-
-```text
-v0.1.0
-v0.2.0
-v1.0.0
-v1.0.0-beta.1
-```
-
-Antes de criar a tag, a versao do `package.json` deve ser a mesma da tag sem o `v`.
-
-Fluxo recomendado pelo GitHub:
-
-1. Abra `Actions`.
-2. Escolha o workflow `Prepare Release PR`.
-3. Clique em `Run workflow`.
-4. Informe a versao, por exemplo `0.8.0` ou `v0.8.0`.
-5. O workflow cria uma branch `release/v0.8.0`, atualiza `package.json` e `package-lock.json`, abre uma PR e dispara CI + CodeQL.
-6. Depois que os checks passarem, faca o merge da PR.
-7. O workflow `Auto Release From Main` cria a tag e a GitHub Release automaticamente.
-
-Para o passo de abrir PR funcionar, habilite uma vez em `Settings > Actions > General > Workflow permissions` a opcao `Allow GitHub Actions to create and approve pull requests`.
-
-Fluxo manual de fallback para publicar `v0.4.0`:
-
-```bash
-git switch main
-git pull --ff-only
-git switch -c release/v0.4.0
-npm version 0.4.0 --no-git-tag-version
-git add package.json package-lock.json
-git commit -m "chore: bump version to 0.4.0"
-git push -u origin release/v0.4.0
-```
-
-Depois que o PR for aprovado, os checks passarem e o merge for feito na `main`, o workflow automatico cria a tag e a release. Se a tag da versao ja existir, o workflow pula a criacao sem falhar.
-
-O workflow `.github/workflows/release.yml` continua existindo como fallback para tags semanticas criadas manualmente. Quando uma tag manual e enviada, ele roda:
-
-- `npm ci`;
-- validacao da tag contra `package.json`;
-- build TypeScript;
-- testes unitarios;
-- cobertura;
-- auditoria de seguranca;
-- criacao da GitHub Release com notas automaticas.
-
-## Estrutura
-
-```text
-src/
-  bot/          Painel e teclados do Telegram
-  config/       Variaveis de ambiente tipadas
-  db/           Cliente Turso, migrations e repositorios
-  delivery/     Entrega final pelo Telegram
-  packager/     Criacao de ZIPs do lote
-  renderer/     Planejamento e execucao de renderizacao com FFprobe/FFmpeg
-  security/     Acesso autorizado e validacao de midia
-  storage/      Upload S3/R2 e URLs publicas
-  templates/    Templates fixos
-  workflow/     Regras de lote, ajustes e status
-
-assets/
-  templates/    Templates versionados com template.json, preview e frame
-
-tests/
-  bot/
-  ci/
-  config/
-  db/
-  delivery/
-  packager/
-  queue/
-  renderer/
-  security/
-  server/
-  storage/
-  templates/
-  worker/
-  workflow/
-
-db/
-  migrations/
-
-docs/
-  github-workflow.md
-  railway-staging.md
-```
-
-## Templates
-
-Os templates fixos ficam versionados no GitHub em `assets/templates/<id>/template.json`. Para templates prontos, use `kind: "frame"` com um `frame.png` em 1080x1920.
-
-Existem dois jeitos de abrir a area do video:
-
-- exportar um PNG com transparencia real na area onde o video entra;
-- exportar um PNG normal com uma cor-chave artificial nessa area, como `#00FF01`, e declarar `keyColor` no JSON.
-
-Tudo que estiver opaco no PNG aparece por cima do Reel final. Se `keyColor` existir, essa cor e removida do frame antes da sobreposicao.
-
-Exemplo:
-
-```text
-assets/templates/
-  meu-template/
-    template.json
-    frame.png
-    preview.svg
-  humor-cachorro/
-    template.json
-    frame.png
-```
-
-Exemplo de `template.json` para template pronto:
-
-```json
-{
-  "id": "meu-template",
-  "name": "Meu Template",
-  "kind": "frame",
-  "previewPath": "assets/templates/meu-template/preview.svg",
-  "framePath": "assets/templates/meu-template/frame.png",
-  "canvas": { "width": 1080, "height": 1920 },
-  "videoBox": { "x": 90, "y": 620, "width": 900, "height": 1120 }
-}
-```
-
-`videoBox` define onde o video sera encaixado dentro do canvas final, em pixels. No exemplo acima, o video e cortado no modo cover para `900x1120` e posicionado em `x=90`, `y=620`.
-
-Exemplo com cor-chave exportada do Canva:
-
-```json
-{
-  "id": "humor-cachorro",
-  "name": "Humor Cachorro",
-  "kind": "frame",
-  "previewPath": "assets/templates/humor-cachorro/frame.png",
-  "framePath": "assets/templates/humor-cachorro/frame.png",
-  "canvas": { "width": 1080, "height": 1920 },
-  "videoBox": { "x": 0, "y": 761, "width": 1080, "height": 1159 },
-  "keyColor": "#00FF01"
-}
-```
-
-Use uma cor que nao apareca em nenhuma outra parte do template. Para Canva, confira um pixel da area colorida antes de preencher `keyColor`, pois pequenas variacoes como `#00FF01` podem acontecer no export.
-
-O bot carrega automaticamente os templates validos dessa pasta. Se um `template.json` estiver invalido ou apontar para asset inexistente, os testes falham antes do deploy.
-
-## Proximas Etapas
-
-- Melhorar ajustes avancados do lote no Telegram.
-- Adicionar testes de integracao com videos pequenos reais no FFmpeg.
-- Fazer smoke test em staging no Railway com Telegram, Redis, Turso e S3/R2 reais.
+Dependabot is configured to keep dependencies and GitHub Actions updated.
