@@ -105,7 +105,32 @@ export class LibsqlBatchRepository {
         INNER JOIN users ON users.id = batches.user_id
         WHERE users.telegram_user_id = ?
           AND batches.status NOT IN ('completed', 'failed', 'cancelled')
-        ORDER BY batches.updated_at DESC
+        ORDER BY batches.updated_at DESC,
+                 batches.created_at DESC,
+                 batches.id DESC
+        LIMIT 1
+      `,
+      args: [telegramUserId]
+    });
+
+    const row = batchResult.rows[0] as unknown as BatchRow | undefined;
+    if (!row) {
+      return null;
+    }
+
+    return this.hydrateBatch(row);
+  }
+
+  async findLatestBatchByTelegramUserId(telegramUserId: string): Promise<Batch | null> {
+    const batchResult = await this.client.execute({
+      sql: `
+        SELECT batches.*, users.telegram_user_id
+        FROM batches
+        INNER JOIN users ON users.id = batches.user_id
+        WHERE users.telegram_user_id = ?
+        ORDER BY batches.updated_at DESC,
+                 batches.created_at DESC,
+                 batches.id DESC
         LIMIT 1
       `,
       args: [telegramUserId]

@@ -12,7 +12,19 @@ class MemoryBatchStore implements BatchStore {
   }
 
   async findActiveBatchByTelegramUserId(telegramUserId: string) {
-    if (!this.batch || this.batch.telegramUserId !== telegramUserId || this.batch.status === "cancelled") {
+    if (
+      !this.batch ||
+      this.batch.telegramUserId !== telegramUserId ||
+      ["completed", "failed", "cancelled"].includes(this.batch.status)
+    ) {
+      return null;
+    }
+
+    return structuredClone(this.batch);
+  }
+
+  async findLatestBatchByTelegramUserId(telegramUserId: string) {
+    if (!this.batch || this.batch.telegramUserId !== telegramUserId) {
       return null;
     }
 
@@ -115,6 +127,52 @@ describe("batch controller", () => {
     expect(response.batch?.settings.watermark).toBe(true);
     expect(queuedBatchIds).toEqual(["batch-1"]);
     expect(response.text).toContain("Trabalho enviado para a fila");
+  });
+
+  it("shows the active batch status with the matching action keyboard", async () => {
+    const store = new MemoryBatchStore();
+    const controller = createController(store, ["batch-1"]);
+
+    await controller.start({ telegramUserId: "123" });
+    await controller.selectTemplate({ telegramUserId: "123" }, "humor-cachorro");
+    const response = await controller.showStatus({ telegramUserId: "123" });
+
+    expect(response.keyboard).toBe("receiving");
+    expect(response.text).toContain("Status: Recebendo videos");
+    expect(response.text).toContain("Videos: 0/50 recebidos");
+  });
+
+  it("shows the latest finished batch when there is no active batch", async () => {
+    const store = new MemoryBatchStore();
+    const controller = createController(store, ["batch-1"]);
+    store.batch = {
+      id: "batch-1",
+      telegramUserId: "123",
+      status: "completed",
+      templateId: "humor-cachorro",
+      outputZipUrl: "https://files.example.com/batch-1.zip",
+      settings: DEFAULT_BATCH_SETTINGS,
+      videos: [{ id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000, status: "delivered" }]
+    };
+
+    const response = await controller.showStatus({ telegramUserId: "123" });
+
+    expect(response.keyboard).toBeNull();
+    expect(response.text).toContain("Ultimo lote encontrado.");
+    expect(response.text).toContain("Status: Concluido");
+    expect(response.text).toContain("ZIP: https://files.example.com/batch-1.zip");
+  });
+
+  it("answers clearly when the user has no batch history", async () => {
+    const store = new MemoryBatchStore();
+    const controller = createController(store, ["batch-1"]);
+
+    const response = await controller.showStatus({ telegramUserId: "123" });
+
+    expect(response).toEqual({
+      text: "Nenhum lote encontrado. Use /novo para comecar.",
+      keyboard: null
+    });
   });
 });
 

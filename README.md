@@ -41,6 +41,7 @@ Comandos iniciais:
 
 - `/start` mostra a mensagem inicial do bot.
 - `/novo` cria um novo lote e abre a escolha de template.
+- `/status` mostra o lote ativo ou o ultimo lote recente, incluindo ZIP quando disponivel.
 
 Durante o lote, o bot usa botoes inline para escolher template, finalizar envio, alterar ajustes globais e enviar o trabalho para a fila.
 

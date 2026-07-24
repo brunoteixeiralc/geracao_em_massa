@@ -45,4 +45,15 @@ describe("renderBatchPanel", () => {
     expect(panel).toContain("Renderizados: 1/3");
     expect(panel).toContain("Entregues: 0/3");
   });
+
+  it("shows the ZIP URL when a batch has a final archive", () => {
+    const batch = {
+      ...selectTemplate(createDraftBatch({ id: "522", telegramUserId: "123" }), "humor-cachorro"),
+      status: "completed" as const,
+      outputZipUrl: "https://files.example.com/522.zip",
+      videos: [{ id: "v1", fileId: "f1", fileName: "one.mp4", sizeBytes: 1000, status: "delivered" as const }]
+    };
+
+    expect(renderBatchPanel(batch)).toContain("ZIP: https://files.example.com/522.zip");
+  });
 });

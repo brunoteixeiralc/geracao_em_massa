@@ -130,6 +130,28 @@ describe("LibsqlBatchRepository", () => {
 
     expect(activeBatch?.id).toBe("batch-2");
   });
+
+  it("loads the latest Telegram batch even when it is already completed", async () => {
+    const client = createClient({ url: `file:${join(tmpdir(), `reels-repo-${nanoid()}.db`)}` });
+    await migrateTestDatabase(client);
+    const repository = new LibsqlBatchRepository(client);
+
+    await repository.createBatch(createDraftBatch({ id: "batch-1", telegramUserId: "123" }));
+    let batch = createDraftBatch({ id: "batch-2", telegramUserId: "123" });
+    await repository.createBatch(batch);
+    batch = { ...batch, status: "completed", outputZipUrl: "https://files.example.com/batch-2.zip" };
+    await repository.saveBatch(batch);
+
+    const activeBatch = await repository.findActiveBatchByTelegramUserId("123");
+    const latestBatch = await repository.findLatestBatchByTelegramUserId("123");
+
+    expect(activeBatch).toBeNull();
+    expect(latestBatch).toMatchObject({
+      id: "batch-2",
+      status: "completed",
+      outputZipUrl: "https://files.example.com/batch-2.zip"
+    });
+  });
 });
 
 async function migrateTestDatabase(client: { execute(statement: string): Promise<unknown> }) {
