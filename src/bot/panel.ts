@@ -40,6 +40,10 @@ export function renderBatchPanel(batch: Batch): string {
     lines.push(`${batch.videos.length} Reels prontos`);
   }
 
+  if (batch.outputZipUrl) {
+    lines.push(`ZIP: ${batch.outputZipUrl}`);
+  }
+
   if (batch.status === "failed") {
     lines.push("Falha no lote. Verifique os itens marcados com erro.");
   }

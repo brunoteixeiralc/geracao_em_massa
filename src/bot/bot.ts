@@ -34,13 +34,18 @@ export function createTelegramBot(options: { env: AppEnv; store: BatchStore; que
       [
         "Geracao em massa de Reels.",
         "",
-        "Use /novo para criar um lote, escolha o template e envie seus videos."
+        "Use /novo para criar um lote, escolha o template e envie seus videos.",
+        "Use /status para acompanhar o lote atual ou recuperar o ultimo resultado."
       ].join("\n")
     );
   });
 
   bot.command("novo", async (ctx) => {
     await respond(ctx, options.store, () => controller.start(readUser(ctx)));
+  });
+
+  bot.command("status", async (ctx) => {
+    await respond(ctx, options.store, () => controller.showStatus(readUser(ctx)));
   });
 
   bot.callbackQuery(/^template:(.+)$/, async (ctx) => {

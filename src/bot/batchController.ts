@@ -14,6 +14,7 @@ import { renderBatchPanel } from "./panel.js";
 export type BatchStore = {
   createBatch(batch: Batch, username?: string): Promise<void>;
   findActiveBatchByTelegramUserId(telegramUserId: string): Promise<Batch | null>;
+  findLatestBatchByTelegramUserId(telegramUserId: string): Promise<Batch | null>;
   saveBatch(batch: Batch): Promise<void>;
 };
 
@@ -67,6 +68,31 @@ export function createBatchController(options: BatchControllerOptions) {
         text: ["Novo trabalho criado.", "", renderBatchPanel(batch), "", "Escolha um template para continuar."].join("\n"),
         keyboard: "templates",
         batch
+      };
+    },
+
+    async showStatus(user: TelegramUserRef): Promise<BatchControllerResponse> {
+      const activeBatch = await options.store.findActiveBatchByTelegramUserId(user.telegramUserId);
+      if (activeBatch) {
+        return {
+          text: renderBatchPanel(activeBatch),
+          keyboard: keyboardForBatchStatus(activeBatch),
+          batch: activeBatch
+        };
+      }
+
+      const latestBatch = await options.store.findLatestBatchByTelegramUserId(user.telegramUserId);
+      if (latestBatch) {
+        return {
+          text: ["Ultimo lote encontrado.", "", renderBatchPanel(latestBatch)].join("\n"),
+          keyboard: null,
+          batch: latestBatch
+        };
+      }
+
+      return {
+        text: "Nenhum lote encontrado. Use /novo para comecar.",
+        keyboard: null
       };
     },
 
@@ -174,6 +200,22 @@ export function createBatchController(options: BatchControllerOptions) {
       };
     }
   };
+}
+
+function keyboardForBatchStatus(batch: Batch): BatchControllerResponse["keyboard"] {
+  if (batch.status === "draft") {
+    return "templates";
+  }
+
+  if (batch.status === "receiving") {
+    return "receiving";
+  }
+
+  if (batch.status === "settings") {
+    return "settings";
+  }
+
+  return null;
 }
 
 async function requireActiveBatch(store: BatchStore, telegramUserId: string) {

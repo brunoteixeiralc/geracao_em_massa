@@ -12,7 +12,19 @@ class MemoryBatchStore implements BatchStore {
   }
 
   async findActiveBatchByTelegramUserId(telegramUserId: string) {
-    if (!this.batch || this.batch.telegramUserId !== telegramUserId || this.batch.status === "cancelled") {
+    if (
+      !this.batch ||
+      this.batch.telegramUserId !== telegramUserId ||
+      ["completed", "failed", "cancelled"].includes(this.batch.status)
+    ) {
+      return null;
+    }
+
+    return structuredClone(this.batch);
+  }
+
+  async findLatestBatchByTelegramUserId(telegramUserId: string) {
+    if (!this.batch || this.batch.telegramUserId !== telegramUserId) {
       return null;
     }
 
@@ -77,6 +89,41 @@ describe("createTelegramBot", () => {
     expect(calls.map((call) => call.method)).toEqual(["sendPhoto", "sendMessage"]);
     expect(calls[1]?.payload.text).toContain("Escolha um template");
     expect(calls[1]?.payload.reply_markup).toBeDefined();
+  });
+
+  it("shows the current batch status from /status", async () => {
+    const store = new MemoryBatchStore();
+    store.batch = {
+      id: "batch-1",
+      telegramUserId: "123",
+      status: "queued",
+      templateId: "humor-cachorro",
+      outputZipUrl: null,
+      settings: {
+        autoCut: true,
+        zoomPercent: 105,
+        speed: 1,
+        mirror: false,
+        trimStartSeconds: 0.3,
+        trimEndSeconds: 0.3,
+        antiduplication: true,
+        cta: true,
+        watermark: false
+      },
+      videos: [{ id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000, status: "queued" }]
+    };
+
+    const calls = await handleUpdate(store, updateWithText("/status", 123));
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      method: "sendMessage",
+      payload: {
+        chat_id: 123
+      }
+    });
+    expect(calls[0]?.payload.text).toContain("Status: Na fila");
+    expect(calls[0]?.payload.text).toContain("Fase: Na fila");
   });
 
   it("stores the edited Telegram message as the live status panel before queueing", async () => {
