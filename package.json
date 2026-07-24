@@ -16,7 +16,9 @@
     "test:unit": "vitest run tests/config tests/workflow tests/security tests/bot tests/templates tests/renderer tests/db tests/server tests/queue tests/worker tests/packager tests/storage tests/delivery tests/ci",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "db:migrate": "tsx src/db/migrate.ts"
+    "db:migrate": "tsx src/db/migrate.ts",
+    "templates:validate": "tsx src/templates/validateTemplatesCli.ts",
+    "templates:smoke": "tsx src/templates/validateTemplatesCli.ts --smoke"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.614.0",

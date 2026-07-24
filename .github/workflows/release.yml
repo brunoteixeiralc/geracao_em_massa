@@ -54,6 +54,9 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      - name: Template validation
+        run: npm run templates:validate
+
       - name: Coverage
         run: npm run test:coverage
 
