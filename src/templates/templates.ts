@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { z } from "zod";
 
 export type TemplateDefinition = {
@@ -73,8 +73,9 @@ const frameTemplateSchema = baseTemplateSchema
   .strict();
 
 const templateSchema = z.union([frameTemplateSchema, profileTemplateSchema]);
+const templatesRoot = join(process.cwd(), "assets", "templates");
 
-export const TEMPLATES: TemplateDefinition[] = loadTemplatesFromDirectory(join(process.cwd(), "assets", "templates"));
+export const TEMPLATES: TemplateDefinition[] = loadTemplatesFromDirectory(templatesRoot);
 
 export function getTemplateById(id: string): TemplateDefinition | undefined {
   return TEMPLATES.find((template) => template.id === id);
@@ -82,19 +83,32 @@ export function getTemplateById(id: string): TemplateDefinition | undefined {
 
 export function loadTemplatesFromDirectory(rootDir: string): TemplateDefinition[] {
   const templateDirectories = readdirSync(rootDir)
+    .filter((entry) => !entry.startsWith("."))
     .map((entry) => join(rootDir, entry))
     .filter((entryPath) => statSync(entryPath).isDirectory());
 
-  return templateDirectories.map(loadTemplate).sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
+  const templates = templateDirectories.map(loadTemplate);
+  assertUniqueTemplateIds(templates);
+
+  return templates.sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
 }
 
 function loadTemplate(templateDir: string): TemplateDefinition {
   const templatePath = join(templateDir, "template.json");
+  if (!existsSync(templatePath)) {
+    throw new Error(`Invalid template ${templateDir}: missing template.json`);
+  }
+
   const raw = readFileSync(templatePath, "utf8");
   const parsed = templateSchema.safeParse(JSON.parse(raw));
 
   if (!parsed.success) {
     throw new Error(`Invalid template ${templatePath}: ${parsed.error.message}`);
+  }
+
+  const folderName = basename(templateDir);
+  if (parsed.data.id !== folderName) {
+    throw new Error(`Invalid template ${templatePath}: id must match folder name ${folderName}`);
   }
 
   assertAssetExists(parsed.data.previewPath, templatePath);
@@ -105,6 +119,18 @@ function loadTemplate(templateDir: string): TemplateDefinition {
   }
 
   return parsed.data;
+}
+
+function assertUniqueTemplateIds(templates: TemplateDefinition[]) {
+  const seen = new Set<string>();
+
+  for (const template of templates) {
+    if (seen.has(template.id)) {
+      throw new Error(`Invalid templates: duplicate template id ${template.id}`);
+    }
+
+    seen.add(template.id);
+  }
 }
 
 function assertAssetExists(assetPath: string, templatePath: string) {

@@ -17,6 +17,8 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "db:migrate": "tsx src/db/migrate.ts",
+    "templates:list": "tsx src/templates/manageTemplatesCli.ts list",
+    "templates:create-frame": "tsx src/templates/manageTemplatesCli.ts create-frame",
     "templates:validate": "tsx src/templates/validateTemplatesCli.ts",
     "templates:smoke": "tsx src/templates/validateTemplatesCli.ts --smoke"
   },
