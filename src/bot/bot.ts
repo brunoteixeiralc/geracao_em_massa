@@ -35,6 +35,7 @@ export function createTelegramBot(options: { env: AppEnv; store: BatchStore; que
         "Geracao em massa de Reels.",
         "",
         "Use /novo para criar um lote, escolha o template e envie seus videos.",
+        "Use /templates para ver os templates disponiveis.",
         "Use /status para acompanhar o lote atual ou recuperar o ultimo resultado."
       ].join("\n")
     );
@@ -46,6 +47,10 @@ export function createTelegramBot(options: { env: AppEnv; store: BatchStore; que
 
   bot.command("status", async (ctx) => {
     await respond(ctx, options.store, () => controller.showStatus(readUser(ctx)));
+  });
+
+  bot.command("templates", async (ctx) => {
+    await respond(ctx, options.store, () => controller.showTemplates(readUser(ctx)));
   });
 
   bot.callbackQuery(/^template:(.+)$/, async (ctx) => {
@@ -224,8 +229,8 @@ async function sendResponse(ctx: Context, response: BatchControllerResponse): Pr
     };
   }
 
-  if (response.keyboard === "templates") {
-    await sendTemplatePreviews(ctx);
+  if (response.templatePreviews) {
+    await sendTemplatePreviews(ctx, response.templatePreviews);
   }
 
   const message = await ctx.reply(response.text, replyMarkup ? { reply_markup: replyMarkup } : undefined);
@@ -251,12 +256,12 @@ function keyboardFor(name: BatchControllerResponse["keyboard"]): InlineKeyboard 
   return undefined;
 }
 
-async function sendTemplatePreviews(ctx: Context) {
+async function sendTemplatePreviews(ctx: Context, options: { selectable: boolean }) {
   for (const template of TEMPLATES) {
     try {
       await ctx.replyWithPhoto(new InputFile(join(process.cwd(), template.previewPath)), {
-        caption: `Template: ${template.name}`,
-        reply_markup: templatePreviewKeyboard(template.id)
+        caption: [`Template: ${template.name}`, `ID: ${template.id}`, `Tipo: ${template.kind}`].join("\n"),
+        reply_markup: options.selectable ? templatePreviewKeyboard(template.id) : undefined
       });
     } catch (error) {
       console.warn(`Could not send template preview ${template.id}`, error);
