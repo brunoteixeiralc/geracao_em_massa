@@ -131,10 +131,38 @@ npm run start
 npm run start:worker
 npm run test:unit
 npm run test:coverage
+npm run templates:validate
+npm run templates:smoke
 npm audit --audit-level=high
 ```
 
-O CI do GitHub executa build, testes, cobertura e auditoria de dependencias.
+O CI do GitHub executa build, testes, validacao estatica de templates, cobertura e auditoria de dependencias.
+
+## Templates
+
+Cada template fica em `assets/templates/<id>/template.json` e referencia os assets usados na renderizacao.
+
+Antes de subir um template novo, rode:
+
+```bash
+npm run templates:validate
+```
+
+Esse comando valida:
+
+- schema do `template.json`;
+- existencia de `previewPath`, `framePath` ou `avatarPath`;
+- dimensoes PNG iguais ao `canvas`;
+- `videoBox` dentro do canvas;
+- cobertura minima de `keyColor` em templates `kind: "frame"`.
+
+Para fazer um smoke local com FFmpeg, rode:
+
+```bash
+npm run templates:smoke
+```
+
+Esse comando cria um video sintetico curto e tenta renderizar todos os templates com o mesmo plano usado pelo worker.
 
 ## Ambiente Local
 
