@@ -142,6 +142,31 @@ describe("batch controller", () => {
     expect(response.text).toContain("Videos: 0/50 recebidos");
   });
 
+  it("shows templates as selectable when the active batch can still change template", async () => {
+    const store = new MemoryBatchStore();
+    const controller = createController(store, ["batch-1"]);
+
+    await controller.start({ telegramUserId: "123" });
+    await controller.selectTemplate({ telegramUserId: "123" }, "humor-cachorro");
+    const response = await controller.showTemplates({ telegramUserId: "123" });
+
+    expect(response.templatePreviews).toEqual({ selectable: true });
+    expect(response.text).toContain("Templates disponiveis.");
+    expect(response.text).toContain("- Humor Cachorro (frame) · humor-cachorro");
+    expect(response.text).toContain("aplicar ao lote atual");
+  });
+
+  it("shows templates as read-only when there is no active batch", async () => {
+    const store = new MemoryBatchStore();
+    const controller = createController(store, ["batch-1"]);
+
+    const response = await controller.showTemplates({ telegramUserId: "123" });
+
+    expect(response.templatePreviews).toEqual({ selectable: false });
+    expect(response.text).toContain("Templates disponiveis.");
+    expect(response.text).toContain("Use /novo para criar um lote");
+  });
+
   it("shows the latest finished batch when there is no active batch", async () => {
     const store = new MemoryBatchStore();
     const controller = createController(store, ["batch-1"]);

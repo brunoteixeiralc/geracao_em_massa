@@ -1,4 +1,4 @@
-import { getTemplateById } from "../templates/templates.js";
+import { getTemplateById, TEMPLATES } from "../templates/templates.js";
 import {
   createDraftBatch,
   openSettings,
@@ -45,6 +45,9 @@ export type MediaValidator = (input: {
 export type BatchControllerResponse = {
   text: string;
   keyboard: "templates" | "receiving" | "settings" | null;
+  templatePreviews?: {
+    selectable: boolean;
+  };
   captureStatusPanel?: boolean;
   batch?: Batch;
 };
@@ -67,7 +70,29 @@ export function createBatchController(options: BatchControllerOptions) {
       return {
         text: ["Novo trabalho criado.", "", renderBatchPanel(batch), "", "Escolha um template para continuar."].join("\n"),
         keyboard: "templates",
+        templatePreviews: { selectable: true },
         batch
+      };
+    },
+
+    async showTemplates(user: TelegramUserRef): Promise<BatchControllerResponse> {
+      const activeBatch = await options.store.findActiveBatchByTelegramUserId(user.telegramUserId);
+      const selectable = activeBatch ? canSelectTemplate(activeBatch) : false;
+      const lines = [
+        "Templates disponiveis.",
+        "",
+        ...TEMPLATES.map((template) => `- ${template.name} (${template.kind}) · ${template.id}`),
+        "",
+        selectable
+          ? "Toque em Usar este template no preview para aplicar ao lote atual."
+          : "Use /novo para criar um lote e aplicar um template."
+      ];
+
+      return {
+        text: lines.join("\n"),
+        keyboard: null,
+        templatePreviews: { selectable },
+        batch: activeBatch ?? undefined
       };
     },
 
@@ -216,6 +241,10 @@ function keyboardForBatchStatus(batch: Batch): BatchControllerResponse["keyboard
   }
 
   return null;
+}
+
+function canSelectTemplate(batch: Batch) {
+  return batch.status === "draft" || batch.status === "receiving";
 }
 
 async function requireActiveBatch(store: BatchStore, telegramUserId: string) {

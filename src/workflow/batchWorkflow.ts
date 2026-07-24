@@ -39,7 +39,7 @@ export function createDraftBatch(input: { id: string; telegramUserId: string }):
 }
 
 export function selectTemplate(batch: Batch, templateId: string): Batch {
-  if (batch.status !== "draft") {
+  if (batch.status !== "draft" && batch.status !== "receiving") {
     throw new Error(`Cannot select template while batch is ${batch.status}`);
   }
 
