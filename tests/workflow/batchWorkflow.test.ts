@@ -17,6 +17,16 @@ describe("batch workflow", () => {
     expect(batch.templateId).toBe("humor-cachorro");
   });
 
+  it("allows changing the selected template while still receiving videos", () => {
+    let batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-cachorro");
+    batch = receiveVideo(batch, { id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000 }, 50);
+    batch = selectTemplate(batch, "outro-template");
+
+    expect(batch.status).toBe("receiving");
+    expect(batch.templateId).toBe("outro-template");
+    expect(batch.videos).toHaveLength(1);
+  });
+
   it("accepts up to the configured batch limit", () => {
     let batch = selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-cachorro");
     batch = receiveVideo(batch, { id: "video-1", fileId: "file-1", fileName: "one.mp4", sizeBytes: 1000 }, 1);
