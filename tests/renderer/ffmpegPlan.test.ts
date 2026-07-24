@@ -98,14 +98,31 @@ describe("buildFfmpegArgs", () => {
       inputPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
       template: cachorroTemplate,
-      settings: { ...DEFAULT_BATCH_SETTINGS, antiduplication: true }
+      settings: { ...DEFAULT_BATCH_SETTINGS, antiduplication: true },
+      antiduplicationVariant: {
+        brightness: 0.0025,
+        contrast: 1.004,
+        saturation: 0.9985,
+        noiseStrength: 2,
+        noiseSeed: 12345,
+        audioVolume: 0.991,
+        videoCrf: 22,
+        gopSize: 61,
+        metadataComment: "em-massa-test"
+      }
     });
     const joinedArgs = args.join(" ");
 
     expect(joinedArgs).toContain("color=c=white:s=1080x1920:r=30[canvas]");
-    expect(joinedArgs).toContain("fps=30,setsar=1[video]");
+    expect(joinedArgs).toContain(
+      "fps=30,setsar=1,eq=brightness=0.0025:contrast=1.0040:saturation=0.9985,noise=alls=2:allf=t+u:all_seed=12345[video]"
+    );
     expect(joinedArgs).toContain("-map_metadata -1");
     expect(joinedArgs).toContain("-map_chapters -1");
+    expect(joinedArgs).toContain("-metadata comment=em-massa-test");
+    expect(joinedArgs).toContain("-crf 22");
+    expect(joinedArgs).toContain("-g 61");
+    expect(joinedArgs).toContain("-af volume=0.9910,highpass=f=20,lowpass=f=18000,aresample=48000");
   });
 
   it("keeps the render command untouched by antiduplication when disabled", () => {
@@ -118,7 +135,11 @@ describe("buildFfmpegArgs", () => {
     const joinedArgs = args.join(" ");
 
     expect(joinedArgs).not.toContain("fps=30,setsar=1[video]");
+    expect(joinedArgs).not.toContain("eq=brightness");
+    expect(joinedArgs).not.toContain("noise=alls");
     expect(joinedArgs).not.toContain("-map_metadata -1");
     expect(joinedArgs).not.toContain("-map_chapters -1");
+    expect(joinedArgs).not.toContain("-metadata comment=");
+    expect(joinedArgs).not.toContain("-af volume=");
   });
 });

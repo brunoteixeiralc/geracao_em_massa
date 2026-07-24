@@ -1,5 +1,6 @@
 import type { TemplateDefinition } from "../templates/templates.js";
 import type { BatchSettings } from "../workflow/settings.js";
+import { buildAntiduplicationVariant, type AntiduplicationVariant } from "./antiduplication.js";
 
 export type FfmpegPlanInput = {
   inputPath: string;
@@ -7,10 +8,14 @@ export type FfmpegPlanInput = {
   template: TemplateDefinition;
   settings: BatchSettings;
   inputDurationSeconds?: number;
+  antiduplicationVariant?: AntiduplicationVariant;
 };
 
 export function buildFfmpegArgs(input: FfmpegPlanInput): string[] {
   const { template, settings } = input;
+  const antiduplicationVariant = settings.antiduplication
+    ? input.antiduplicationVariant ?? buildAntiduplicationVariant(`${input.inputPath}:${input.outputPath}`)
+    : undefined;
   const scaleFactor = settings.zoomPercent / 100;
   const scaledWidth = Math.round(template.videoBox.width * scaleFactor);
   const scaledHeight = Math.round(template.videoBox.height * scaleFactor);
@@ -29,8 +34,15 @@ export function buildFfmpegArgs(input: FfmpegPlanInput): string[] {
     filters[1] += ",hflip";
   }
 
-  if (settings.antiduplication) {
-    filters[1] += ",fps=30,setsar=1";
+  if (antiduplicationVariant) {
+    filters[1] += [
+      ",fps=30",
+      ",setsar=1",
+      `,eq=brightness=${formatDecimal(antiduplicationVariant.brightness)}:contrast=${formatDecimal(
+        antiduplicationVariant.contrast
+      )}:saturation=${formatDecimal(antiduplicationVariant.saturation)}`,
+      `,noise=alls=${antiduplicationVariant.noiseStrength}:allf=t+u:all_seed=${antiduplicationVariant.noiseSeed}`
+    ].join("");
   }
 
   filters[1] += "[video]";
@@ -56,13 +68,22 @@ export function buildFfmpegArgs(input: FfmpegPlanInput): string[] {
     "[composed]",
     "-map",
     "0:a?",
-    ...(settings.antiduplication ? ["-map_metadata", "-1", "-map_chapters", "-1"] : []),
+    ...(antiduplicationVariant
+      ? ["-map_metadata", "-1", "-map_chapters", "-1", "-metadata", `comment=${antiduplicationVariant.metadataComment}`]
+      : []),
     "-c:v",
     "libx264",
     "-preset",
     "veryfast",
     "-crf",
-    "23",
+    antiduplicationVariant ? String(antiduplicationVariant.videoCrf) : "23",
+    ...(antiduplicationVariant ? ["-g", String(antiduplicationVariant.gopSize), "-keyint_min", "30"] : []),
+    ...(antiduplicationVariant
+      ? [
+          "-af",
+          `volume=${formatDecimal(antiduplicationVariant.audioVolume)},highpass=f=20,lowpass=f=18000,aresample=48000`
+        ]
+      : []),
     "-c:a",
     "aac",
     "-b:a",
@@ -80,6 +101,10 @@ function speedSetPts(speed: number) {
 
 function roundOneDecimal(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+function formatDecimal(value: number) {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(4);
 }
 
 function toFfmpegColor(hexColor: string) {

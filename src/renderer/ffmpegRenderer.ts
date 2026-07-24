@@ -5,6 +5,7 @@ import type { Readable } from "node:stream";
 import { nanoid } from "nanoid";
 import type { TemplateDefinition } from "../templates/templates.js";
 import type { BatchSettings } from "../workflow/settings.js";
+import { buildAntiduplicationVariant } from "./antiduplication.js";
 import { buildFfmpegArgs } from "./ffmpegPlan.js";
 
 export type FfmpegRenderInput = {
@@ -57,7 +58,8 @@ export function createFfmpegRenderer(options: {
         outputPath,
         template: input.template,
         settings: input.settings,
-        inputDurationSeconds
+        inputDurationSeconds,
+        antiduplicationVariant: buildAntiduplicationVariant(`${input.batchId}:${input.videoId}`)
       });
 
       await runFfmpeg(spawnProcess, ffmpegPath, args);
