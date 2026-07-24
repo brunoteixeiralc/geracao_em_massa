@@ -5,3 +5,20 @@ dist
 tmp
 coverage
 .data
+
+# Private/internal documentation
+docs/
+
+# Local databases, dumps, and backups
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+db/backups/
+db/dumps/
+
+# Private/local migration experiments. Keep production schema migrations tracked.
+db/migrations/*.local.sql
+db/migrations/*.private.sql
+db/migrations/*secret*.sql
