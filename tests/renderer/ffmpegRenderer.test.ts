@@ -84,6 +84,44 @@ describe("createFfmpegRenderer", () => {
 
     expect(commands).toEqual(["ffprobe-test", "ffmpeg-test"]);
   });
+
+  it("builds a distinct antiduplication signature for each rendered video", async () => {
+    const workDir = join(tmpdir(), `reels-render-${nanoid()}`);
+    const spawnCalls: Array<{ command: string; args: string[] }> = [];
+    let outputIndex = 0;
+    const renderer = createFfmpegRenderer({
+      workDir,
+      ffmpegPath: "ffmpeg-test",
+      createOutputId: () => `render-${(outputIndex += 1)}`,
+      probeDurationSeconds: async () => 10,
+      spawnProcess: (command, args) => {
+        spawnCalls.push({ command, args });
+        return closingProcess(0);
+      }
+    });
+
+    await renderer.renderVideo({
+      batchId: "batch-1",
+      videoId: "video-1",
+      inputPath: ".data/reels-bot/batch-1/video-1.mp4",
+      template: TEMPLATES[0],
+      settings: { ...DEFAULT_BATCH_SETTINGS, antiduplication: true }
+    });
+    await renderer.renderVideo({
+      batchId: "batch-1",
+      videoId: "video-2",
+      inputPath: ".data/reels-bot/batch-1/video-2.mp4",
+      template: TEMPLATES[0],
+      settings: { ...DEFAULT_BATCH_SETTINGS, antiduplication: true }
+    });
+
+    const firstArgs = spawnCalls[0].args.join(" ");
+    const secondArgs = spawnCalls[1].args.join(" ");
+
+    expect(firstArgs).toContain("-metadata comment=em-massa-");
+    expect(secondArgs).toContain("-metadata comment=em-massa-");
+    expect(firstArgs).not.toBe(secondArgs);
+  });
 });
 
 function closingProcess(code: number, stderr = "", stdout = "") {

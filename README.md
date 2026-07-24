@@ -46,15 +46,18 @@ Durante o lote, o bot usa botoes inline para escolher template, finalizar envio,
 
 ## Antiduplicidade Segura
 
-A opcao de antiduplicidade aplica uma normalizacao tecnica conservadora no render final. Ela nao injeta ruido invisivel nem desalinha quadros; o objetivo e gerar um arquivo limpo, padronizado e com identidade tecnica consistente do lote.
+A opcao de antiduplicidade aplica variacoes tecnicas leves e deterministicas por video. O objetivo e gerar Reels limpos, visualmente fieis ao template e com assinatura tecnica diferente entre arquivos do mesmo lote.
 
 Quando ligada, o FFmpeg:
 
 - remove metadados e capitulos herdados do arquivo original;
 - padroniza o video final em 30 FPS;
 - normaliza o SAR com `setsar=1`;
-- preserva audio quando o video original possui audio;
-- continua aceitando videos sem audio.
+- aplica microvariacoes de brilho, contraste e saturacao;
+- injeta ruido visual muito leve no video de entrada antes da composicao com o template;
+- varia CRF e GOP dentro de uma faixa conservadora;
+- reamostra o audio para 48 kHz e aplica uma mascara leve de volume/frequencia quando ha audio;
+- continua aceitando videos sem audio por meio de `0:a?`.
 
 Quando desligada, o render segue sem essa etapa extra.
 
