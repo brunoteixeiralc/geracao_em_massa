@@ -177,6 +177,64 @@ describe("processQueuedBatch", () => {
     });
   });
 
+  it("passes Instagram link metadata to the downloader", async () => {
+    const store = new MemoryWorkerStore();
+    store.batches.push({
+      id: "batch-1",
+      telegramUserId: "123",
+      templateId: "humor-cachorro",
+      status: "queued",
+      settings: DEFAULT_BATCH_SETTINGS,
+      videos: [
+        {
+          id: "video-1",
+          sourceType: "instagram_url",
+          sourceUrl: "https://www.instagram.com/reel/ABC123/",
+          fileId: "",
+          fileName: "video-1.mp4",
+          sizeBytes: 0,
+          status: "queued"
+        }
+      ]
+    });
+    const downloadInputs: unknown[] = [];
+
+    const result = await processQueuedBatch({
+      batchId: "batch-1",
+      store,
+      downloader: {
+        downloadVideo: async (input) => {
+          downloadInputs.push(input);
+          return { inputPath: `/tmp/${input.videoId}.mp4`, bytesWritten: 1000 };
+        }
+      },
+      renderer: {
+        renderVideo: async (input) => ({ outputPath: `/tmp/rendered/${input.videoId}.mp4` })
+      },
+      packager: {
+        createBatchZip: async () => ({ zipPath: "/tmp/rendered/batch-1.zip", fileName: "batch-1.zip" })
+      },
+      storage: {
+        uploadFile: async (input) => ({ key: input.key, url: `https://files.example.com/${input.key}` })
+      },
+      delivery: {
+        deliverBatch: async () => undefined
+      }
+    });
+
+    expect(result.status).toBe("completed");
+    expect(downloadInputs).toEqual([
+      {
+        batchId: "batch-1",
+        videoId: "video-1",
+        fileId: "",
+        sourceType: "instagram_url",
+        sourceUrl: "https://www.instagram.com/reel/ABC123/",
+        fileName: "video-1.mp4"
+      }
+    ]);
+  });
+
   it("marks one video failed and continues rendering the rest", async () => {
     const store = new MemoryWorkerStore();
     store.batches.push({

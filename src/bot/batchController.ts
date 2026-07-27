@@ -35,6 +35,11 @@ export type TelegramVideoInput = {
   sizeBytes?: number;
 };
 
+export type InstagramLinkInput = {
+  id: string;
+  url: string;
+};
+
 export type MediaValidator = (input: {
   fileName: string;
   mimeType: string | undefined;
@@ -58,6 +63,7 @@ export type BatchControllerOptions = {
   ids: () => string;
   maxBatchVideos: number;
   maxInputBytes: number;
+  instagramDownloadEnabled: boolean;
   validateMedia: MediaValidator;
 };
 
@@ -161,6 +167,42 @@ export function createBatchController(options: BatchControllerOptions) {
       };
     },
 
+    async receiveInstagramLinks(user: TelegramUserRef, links: InstagramLinkInput[]): Promise<BatchControllerResponse> {
+      if (!options.instagramDownloadEnabled) {
+        return {
+          text: "Download por link do Instagram ainda esta desativado neste ambiente. Envie o video como anexo.",
+          keyboard: "receiving"
+        };
+      }
+
+      if (links.length === 0) {
+        return {
+          text: "Nao encontrei links validos do Instagram. Envie links de Reels, posts ou IGTV.",
+          keyboard: "receiving"
+        };
+      }
+
+      const batch = await requireActiveBatch(options.store, user.telegramUserId);
+      let updated = batch;
+      for (const link of links) {
+        updated = receiveVideo(updated, toBatchInstagramVideo(link), options.maxBatchVideos);
+      }
+      await options.store.saveBatch(updated);
+
+      return {
+        text: [
+          renderBatchPanel(updated),
+          "",
+          links.length === 1
+            ? "Link recebido. Ele sera baixado no servidor quando o lote for processado."
+            : `${links.length} links recebidos. Eles serao baixados no servidor quando o lote for processado.`,
+          "Envie mais videos/links ou finalize o envio."
+        ].join("\n"),
+        keyboard: "receiving",
+        batch: updated
+      };
+    },
+
     async openSettings(user: TelegramUserRef): Promise<BatchControllerResponse> {
       const batch = await requireActiveBatch(options.store, user.telegramUserId);
       const updated = openSettings(batch);
@@ -259,8 +301,21 @@ async function requireActiveBatch(store: BatchStore, telegramUserId: string) {
 function toBatchVideo(video: TelegramVideoInput): Omit<BatchVideo, "status"> {
   return {
     id: video.id,
+    sourceType: "telegram_file",
     fileId: video.fileId,
+    sourceUrl: null,
     fileName: video.fileName,
     sizeBytes: video.sizeBytes ?? 0
+  };
+}
+
+function toBatchInstagramVideo(link: InstagramLinkInput): Omit<BatchVideo, "status"> {
+  return {
+    id: link.id,
+    sourceType: "instagram_url",
+    fileId: "",
+    sourceUrl: link.url,
+    fileName: `${link.id}.mp4`,
+    sizeBytes: 0
   };
 }

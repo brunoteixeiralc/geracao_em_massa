@@ -11,6 +11,8 @@ export type WorkerDownloader = {
     batchId: string;
     videoId: string;
     fileId: string;
+    sourceType?: "telegram_file" | "instagram_url";
+    sourceUrl?: string | null;
     fileName: string;
   }): Promise<{
     inputPath: string;
@@ -111,6 +113,8 @@ export async function processQueuedBatch(options: {
         batchId: currentBatch.id,
         videoId: video.id,
         fileId: video.fileId,
+        sourceType: video.sourceType,
+        sourceUrl: video.sourceUrl,
         fileName: video.fileName
       });
 

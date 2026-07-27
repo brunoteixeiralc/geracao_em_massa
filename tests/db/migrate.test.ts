@@ -17,9 +17,12 @@ describe("applyMigrations", () => {
     expect(migrations.rows.map((row) => row.version)).toEqual([
       "001_initial_schema",
       "002_video_input_path",
-      "003_video_output_path"
+      "003_video_output_path",
+      "004_video_source_fields"
     ]);
     expect(columns.rows.map((row) => row.name)).toContain("input_path");
     expect(columns.rows.map((row) => row.name)).toContain("output_path");
+    expect(columns.rows.map((row) => row.name)).toContain("source_type");
+    expect(columns.rows.map((row) => row.name)).toContain("source_url");
   });
 });

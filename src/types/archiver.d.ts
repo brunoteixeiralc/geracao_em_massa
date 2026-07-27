@@ -8,5 +8,11 @@ declare module "archiver" {
     pipe(stream: Writable): void;
   };
 
-  export default function archiver(format: "zip", options?: { zlib?: { level?: number } }): Archiver;
+  export class ZipArchive implements Archiver {
+    constructor(options?: { zlib?: { level?: number } });
+    file(path: string, options: { name: string }): void;
+    finalize(): Promise<void>;
+    once(event: "error", listener: (error: Error) => void): Archiver;
+    pipe(stream: Writable): void;
+  }
 }

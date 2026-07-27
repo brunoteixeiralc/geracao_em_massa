@@ -1,7 +1,7 @@
 import { createWriteStream } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { basename, isAbsolute, relative, resolve } from "node:path";
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 import { nanoid } from "nanoid";
 
 export type BatchZipInput = {
@@ -47,7 +47,7 @@ async function writeZip(zipPath: string, videos: BatchZipInput["videos"]) {
 
   await new Promise<void>((resolvePromise, reject) => {
     const output = createWriteStream(zipPath, { flags: "wx", mode: 0o600 });
-    const archive = archiver("zip", { zlib: { level: 9 } });
+    const archive = new ZipArchive({ zlib: { level: 9 } });
 
     output.once("close", resolvePromise);
     output.once("error", reject);

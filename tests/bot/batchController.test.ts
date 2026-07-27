@@ -78,9 +78,56 @@ describe("batch controller", () => {
 
     expect(response.keyboard).toBe("receiving");
     expect(response.batch?.videos).toEqual([
-      { id: "video-1", fileId: "file-1", fileName: "clip.mp4", sizeBytes: 1024, status: "received" }
+      {
+        id: "video-1",
+        sourceType: "telegram_file",
+        fileId: "file-1",
+        sourceUrl: null,
+        fileName: "clip.mp4",
+        sizeBytes: 1024,
+        status: "received"
+      }
     ]);
     expect(response.text).toContain("1/50 recebidos");
+  });
+
+  it("receives Instagram links when link downloads are enabled", async () => {
+    const store = new MemoryBatchStore();
+    const controller = createController(store, ["batch-1"], [], { instagramDownloadEnabled: true });
+
+    await controller.start({ telegramUserId: "123" });
+    await controller.selectTemplate({ telegramUserId: "123" }, "humor-cachorro");
+    const response = await controller.receiveInstagramLinks(
+      { telegramUserId: "123" },
+      [{ id: "video-1", url: "https://www.instagram.com/reel/ABC123/" }]
+    );
+
+    expect(response.keyboard).toBe("receiving");
+    expect(response.batch?.videos).toEqual([
+      {
+        id: "video-1",
+        sourceType: "instagram_url",
+        fileId: "",
+        sourceUrl: "https://www.instagram.com/reel/ABC123/",
+        fileName: "video-1.mp4",
+        sizeBytes: 0,
+        status: "received"
+      }
+    ]);
+    expect(response.text).toContain("Link recebido");
+  });
+
+  it("rejects Instagram links when link downloads are disabled", async () => {
+    const store = new MemoryBatchStore();
+    const controller = createController(store, ["batch-1"]);
+
+    const response = await controller.receiveInstagramLinks(
+      { telegramUserId: "123" },
+      [{ id: "video-1", url: "https://www.instagram.com/reel/ABC123/" }]
+    );
+
+    expect(response.text).toContain("desativado");
+    expect(store.batch).toBeNull();
   });
 
   it("rejects invalid videos before changing the batch", async () => {
@@ -201,7 +248,12 @@ describe("batch controller", () => {
   });
 });
 
-function createController(store: BatchStore, ids: string[], queuedBatchIds: string[] = []) {
+function createController(
+  store: BatchStore,
+  ids: string[],
+  queuedBatchIds: string[] = [],
+  overrides: { instagramDownloadEnabled?: boolean } = {}
+) {
   return createBatchController({
     store,
     queue: {
@@ -212,6 +264,7 @@ function createController(store: BatchStore, ids: string[], queuedBatchIds: stri
     ids: () => ids.shift() ?? "fallback-id",
     maxBatchVideos: 50,
     maxInputBytes: 20 * 1024 * 1024,
+    instagramDownloadEnabled: overrides.instagramDownloadEnabled ?? false,
     validateMedia: validateMediaInput
   });
 }

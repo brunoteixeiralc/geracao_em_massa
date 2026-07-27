@@ -33,6 +33,21 @@ describe("parseEnv", () => {
     expect(env.maxBatchVideos).toBe(50);
     expect(env.maxInputBytes).toBe(20 * 1024 * 1024);
     expect(env.trustedTelegramUserIds).toEqual(["123", "456"]);
+    expect(env.instagramDownloadEnabled).toBe(false);
+    expect(env.ytDlpBinary).toBe("yt-dlp");
+  });
+
+  it("parses Instagram download settings", () => {
+    const env = parseEnv({
+      ...validEnv,
+      INSTAGRAM_DOWNLOAD_ENABLED: "true",
+      YT_DLP_BINARY: "/usr/local/bin/yt-dlp",
+      INSTAGRAM_DOWNLOAD_TIMEOUT_MS: "90000"
+    });
+
+    expect(env.instagramDownloadEnabled).toBe(true);
+    expect(env.ytDlpBinary).toBe("/usr/local/bin/yt-dlp");
+    expect(env.instagramDownloadTimeoutMs).toBe(90_000);
   });
 
   it("uses an app-local work directory by default", () => {

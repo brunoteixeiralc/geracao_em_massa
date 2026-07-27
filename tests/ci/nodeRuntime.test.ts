@@ -13,6 +13,7 @@ describe("Node.js runtime", () => {
     };
 
     expect(dockerfile).toContain("FROM node:22-bookworm-slim AS base");
+    expect(dockerfile).toContain("yt-dlp");
     expect(packageJson.engines?.node).toBe(">=22");
     expect(packageJson.engines?.npm).toBe(">=10");
     expect(packageJson.devDependencies?.["@types/node"]).toContain("22");

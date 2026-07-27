@@ -3,6 +3,10 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { z } from "zod";
 
 const tempRoots = [tmpdir(), "/tmp", "/var/tmp"].map((path) => resolve(path));
+const booleanString = z.preprocess(
+  (value) => value ?? "false",
+  z.enum(["true", "false"])
+).transform((value) => value === "true");
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -24,7 +28,10 @@ const schema = z.object({
   MAX_BATCH_VIDEOS: z.coerce.number().int().positive().max(50).default(50),
   MAX_INPUT_BYTES: z.coerce.number().int().positive().default(20 * 1024 * 1024),
   MAX_TELEGRAM_SEND_BYTES: z.coerce.number().int().positive().default(50 * 1024 * 1024),
-  WORKER_CONCURRENCY: z.coerce.number().int().positive().max(3).default(1)
+  WORKER_CONCURRENCY: z.coerce.number().int().positive().max(3).default(1),
+  INSTAGRAM_DOWNLOAD_ENABLED: booleanString,
+  YT_DLP_BINARY: z.string().min(1).default("yt-dlp"),
+  INSTAGRAM_DOWNLOAD_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000)
 });
 
 function isInsideAnyTempRoot(path: string) {
@@ -69,6 +76,9 @@ export function parseEnv(source: NodeJS.ProcessEnv) {
     maxBatchVideos: result.data.MAX_BATCH_VIDEOS,
     maxInputBytes: result.data.MAX_INPUT_BYTES,
     maxTelegramSendBytes: result.data.MAX_TELEGRAM_SEND_BYTES,
-    workerConcurrency: result.data.WORKER_CONCURRENCY
+    workerConcurrency: result.data.WORKER_CONCURRENCY,
+    instagramDownloadEnabled: result.data.INSTAGRAM_DOWNLOAD_ENABLED,
+    ytDlpBinary: result.data.YT_DLP_BINARY,
+    instagramDownloadTimeoutMs: result.data.INSTAGRAM_DOWNLOAD_TIMEOUT_MS
   };
 }
