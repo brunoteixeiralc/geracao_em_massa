@@ -26,8 +26,16 @@ export function createTelegramStatusPanelUpdater(options: { botToken: string; fe
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");
+        if (isTelegramMessageNotModifiedError(body)) {
+          return;
+        }
+
         throw new Error(`Telegram status panel update failed with status ${response.status}: ${body}`);
       }
     }
   };
+}
+
+function isTelegramMessageNotModifiedError(body: string): boolean {
+  return body.includes("message is not modified");
 }
