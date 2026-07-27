@@ -48,7 +48,7 @@ describe("db repository mappers", () => {
       input_path: "/tmp/one.mp4",
       output_path: "/tmp/out.mp4",
       output_url: "https://files.example.com/one.mp4",
-      error_message: null,
+      error_message: "download failed",
       created_at: "2026-07-20 10:00:00",
       updated_at: "2026-07-20 10:00:00"
     });
@@ -61,7 +61,8 @@ describe("db repository mappers", () => {
       status: "ready",
       inputPath: "/tmp/one.mp4",
       outputPath: "/tmp/out.mp4",
-      outputUrl: "https://files.example.com/one.mp4"
+      outputUrl: "https://files.example.com/one.mp4",
+      errorMessage: "download failed"
     });
   });
 });
@@ -86,7 +87,8 @@ describe("LibsqlBatchRepository", () => {
           ...batch.videos[0],
           inputPath: ".data/reels-bot/batch-1/video-1.mp4",
           outputPath: ".data/reels-bot/batch-1/rendered/video-1.mp4",
-          outputUrl: "https://files.example.com/video-1.mp4"
+          outputUrl: "https://files.example.com/video-1.mp4",
+          errorMessage: null
         }
       ]
     };

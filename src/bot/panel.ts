@@ -46,6 +46,10 @@ export function renderBatchPanel(batch: Batch): string {
 
   if (batch.status === "failed") {
     lines.push("Falha no lote. Verifique os itens marcados com erro.");
+    const failedVideo = batch.videos.find((video) => video.status === "failed" && video.errorMessage);
+    if (failedVideo?.errorMessage) {
+      lines.push(`Erro: ${truncateError(failedVideo.errorMessage)}`);
+    }
   }
 
   return lines.join("\n");
@@ -84,4 +88,8 @@ function calculateProgress(batch: Batch) {
     rendered: batch.videos.filter((video) => Boolean(video.outputPath) || renderedStatuses.has(video.status)).length,
     delivered: batch.videos.filter((video) => video.status === "delivered").length
   };
+}
+
+function truncateError(message: string) {
+  return message.length > 180 ? `${message.slice(0, 177)}...` : message;
 }

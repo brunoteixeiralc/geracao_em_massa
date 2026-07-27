@@ -125,7 +125,7 @@ export async function processQueuedBatch(options: {
       await saveBatchProgress(options, currentBatch);
     } catch (error) {
       currentBatch = {
-        ...updateVideo(currentBatch, video.id, { status: "failed" }),
+        ...updateVideo(currentBatch, video.id, { status: "failed", errorMessage: errorToMessage(error) }),
         status: "failed"
       };
       await saveBatchProgress(options, currentBatch);
@@ -141,7 +141,7 @@ export async function processQueuedBatch(options: {
 
   for (const video of currentBatch.videos) {
     if (!video.inputPath) {
-      currentBatch = updateVideo(currentBatch, video.id, { status: "failed" });
+      currentBatch = updateVideo(currentBatch, video.id, { status: "failed", errorMessage: "Arquivo de entrada nao encontrado." });
       await saveBatchProgress(options, currentBatch);
       continue;
     }
@@ -163,8 +163,8 @@ export async function processQueuedBatch(options: {
         outputPath: render.outputPath
       });
       await saveBatchProgress(options, currentBatch);
-    } catch {
-      currentBatch = updateVideo(currentBatch, video.id, { status: "failed" });
+    } catch (error) {
+      currentBatch = updateVideo(currentBatch, video.id, { status: "failed", errorMessage: errorToMessage(error) });
       await saveBatchProgress(options, currentBatch);
     }
   }
@@ -263,4 +263,8 @@ function updateVideo(batch: Batch, videoId: string, patch: Partial<Batch["videos
 function sanitizeStorageSegment(value: string) {
   const safeValue = value.replace(/[^a-zA-Z0-9_.-]+/g, "-").replace(/^-+|-+$/g, "");
   return safeValue || "file";
+}
+
+function errorToMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Erro desconhecido.";
 }
