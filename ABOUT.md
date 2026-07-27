@@ -4,7 +4,7 @@ Use the text below in the GitHub repository About section.
 
 ## Description
 
-Telegram-first bulk Instagram Reels generator with fixed templates, global batch settings, live status updates, FFmpeg rendering, Turso persistence, Redis queues, and S3/R2 delivery.
+Telegram-first bulk Instagram Reels generator with fixed templates, upload or supported link inputs, global batch settings, live status updates, FFmpeg rendering, Turso persistence, Redis queues, and S3/R2 delivery.
 
 ## Website
 
@@ -17,6 +17,7 @@ telegram-bot
 instagram-reels
 bulk-video
 ffmpeg
+yt-dlp
 typescript
 nodejs
 fastify

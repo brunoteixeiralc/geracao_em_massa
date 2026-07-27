@@ -210,6 +210,50 @@ describe("createTelegramBot", () => {
     expect(calls.map((call) => call.method)).toEqual(["answerCallbackQuery", "editMessageText"]);
   });
 
+  it("receives Instagram links as batch inputs", async () => {
+    const store = new MemoryBatchStore();
+    store.batch = {
+      id: "batch-1",
+      telegramUserId: "123",
+      status: "receiving",
+      templateId: "humor-cachorro",
+      outputZipUrl: null,
+      settings: {
+        autoCut: true,
+        zoomPercent: 105,
+        speed: 1,
+        mirror: false,
+        trimStartSeconds: 0.3,
+        trimEndSeconds: 0.3,
+        antiduplication: true,
+        cta: true,
+        watermark: false
+      },
+      videos: []
+    };
+
+    const calls = await handleUpdate(
+      store,
+      updateWithPlainText("https://instagram.com/reel/ABC123/ e https://www.instagram.com/p/POST123/", 123),
+      undefined,
+      {},
+      { instagramDownloadEnabled: true }
+    );
+
+    expect(store.batch?.videos).toMatchObject([
+      {
+        sourceType: "instagram_url",
+        sourceUrl: "https://www.instagram.com/reel/ABC123/"
+      },
+      {
+        sourceType: "instagram_url",
+        sourceUrl: "https://www.instagram.com/p/POST123/"
+      }
+    ]);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.payload.text).toContain("2 links recebidos");
+  });
+
   it("routes all global setting callbacks to the active batch", async () => {
     const store = new MemoryBatchStore();
     store.batch = {
@@ -286,9 +330,10 @@ async function handleUpdate(
   store: BatchStore,
   update: Record<string, unknown>,
   queue?: { enqueueBatch(batchId: string): Promise<void> },
-  apiErrors: Partial<Record<string, Error>> | Error = {}
+  apiErrors: Partial<Record<string, Error>> | Error = {},
+  envOverrides: Partial<AppEnv> = {}
 ) {
-  const bot = createTelegramBot({ env: testEnv(), store, queue });
+  const bot = createTelegramBot({ env: { ...testEnv(), ...envOverrides }, store, queue });
   bot.botInfo = {
     id: 123456,
     is_bot: true,
@@ -335,6 +380,19 @@ function updateWithText(text: string, userId: number) {
   };
 }
 
+function updateWithPlainText(text: string, userId: number) {
+  return {
+    update_id: 1,
+    message: {
+      message_id: 1,
+      date: 1,
+      chat: { id: userId, type: "private" },
+      from: { id: userId, is_bot: false, first_name: "User" },
+      text
+    }
+  };
+}
+
 function callbackUpdate(data: string, userId: number) {
   return {
     update_id: 1,
@@ -373,6 +431,9 @@ function testEnv(): AppEnv {
     maxBatchVideos: 50,
     maxInputBytes: 20 * 1024 * 1024,
     maxTelegramSendBytes: 50 * 1024 * 1024,
-    workerConcurrency: 1
+    workerConcurrency: 1,
+    instagramDownloadEnabled: false,
+    ytDlpBinary: "yt-dlp",
+    instagramDownloadTimeoutMs: 120_000
   };
 }

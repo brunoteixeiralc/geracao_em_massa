@@ -24,7 +24,9 @@ export type BatchRow = {
 export type VideoRow = {
   id: string;
   batch_id: string;
+  source_type?: string | null;
   telegram_file_id: string;
+  source_url?: string | null;
   original_file_name: string;
   size_bytes: number;
   status: string;
@@ -53,7 +55,9 @@ export function mapBatchRow(row: BatchRow): Batch {
 export function mapVideoRow(row: VideoRow): BatchVideo {
   return {
     id: row.id,
+    sourceType: row.source_type === "instagram_url" ? "instagram_url" : "telegram_file",
     fileId: row.telegram_file_id,
+    sourceUrl: row.source_url ?? null,
     fileName: row.original_file_name,
     sizeBytes: row.size_bytes,
     status: row.status as VideoStatus,
@@ -191,10 +195,12 @@ export class LibsqlBatchRepository {
     for (const video of batch.videos) {
       await this.client.execute({
         sql: `
-          INSERT INTO videos (id, batch_id, telegram_file_id, original_file_name, size_bytes, status, input_path, output_path, output_url)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO videos (id, batch_id, source_type, telegram_file_id, source_url, original_file_name, size_bytes, status, input_path, output_path, output_url)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
+            source_type = excluded.source_type,
             telegram_file_id = excluded.telegram_file_id,
+            source_url = excluded.source_url,
             original_file_name = excluded.original_file_name,
             size_bytes = excluded.size_bytes,
             status = excluded.status,
@@ -206,7 +212,9 @@ export class LibsqlBatchRepository {
         args: [
           video.id,
           batch.id,
+          video.sourceType ?? "telegram_file",
           video.fileId,
+          video.sourceUrl ?? null,
           video.fileName,
           video.sizeBytes,
           video.status,

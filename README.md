@@ -2,7 +2,7 @@
 
 Telegram-first app for generating Instagram Reels in bulk.
 
-This project replaces a traditional web interface with a direct Telegram workflow: send a batch of videos, choose a reusable template, apply global settings to the whole batch, follow live processing status, and receive the finished Reels through Telegram, including a ZIP file for downloading everything at once.
+This project replaces a traditional web interface with a direct Telegram workflow: send a batch of videos or supported Instagram links, choose a reusable template, apply global settings to the whole batch, follow live processing status, and receive the finished Reels through Telegram, including a ZIP file for downloading everything at once.
 
 ## Purpose
 
@@ -13,12 +13,13 @@ Main scope:
 - vertical Reels only;
 - reusable fixed templates;
 - input videos usually up to 20 MB each;
+- optional Instagram link ingestion for public/authorized media;
 - batches with up to 50 videos;
 - global settings applied to the whole batch;
 - live Telegram status panel;
 - server-side processing;
 - Redis/BullMQ queue for batch processing;
-- separate worker for downloading Telegram files and rendering with FFmpeg;
+- separate worker for downloading Telegram files or supported Instagram links and rendering with FFmpeg;
 - Turso/libSQL persistence;
 - Railway deployment;
 - individual Telegram delivery and final `.zip` delivery;
@@ -28,11 +29,11 @@ Main scope:
 
 1. The user starts a new batch in the Telegram bot.
 2. The bot shows the active template or lets the user choose another fixed template.
-3. The user sends the videos for the batch.
-4. The bot validates quantity, size, and real file type.
+3. The user sends videos as Telegram attachments or sends supported Instagram media links.
+4. The bot validates quantity, size, link format, and real file type where the binary file is available.
 5. The user reviews global settings such as zoom, speed, trimming, mirroring, CTA, watermark, and antiduplication.
 6. The bot saves the batch state in Turso and sends the job to the queue.
-7. The worker downloads the original Telegram files to `WORK_DIR`.
+7. The worker downloads the original Telegram files or supported Instagram links to `WORK_DIR`.
 8. The worker validates local paths and renders the videos with FFprobe/FFmpeg.
 9. The worker creates the ZIP, uploads MP4s/ZIP to S3-compatible storage, and saves URLs in Turso.
 10. The bot delivers the finished Reels when they fit Telegram limits and always sends the final `.zip` link.
@@ -45,6 +46,8 @@ Initial commands:
 - `/status` shows the active or most recent batch, including the ZIP when available.
 
 During a batch, the bot uses inline buttons for template selection, finishing upload, changing global settings, cancelling, and submitting the job to the queue.
+
+Instagram link downloads are optional and controlled by `INSTAGRAM_DOWNLOAD_ENABLED`. They are intended for public media that the operator owns or is authorized to reuse. If a link cannot be downloaded, the user can still send the video manually as a Telegram attachment.
 
 ## Safe Antiduplication
 
@@ -75,7 +78,7 @@ The MVP technical foundation is already prepared:
 - fixed initial templates;
 - live Telegram status panel rendering and updates;
 - BullMQ queue for batch jobs;
-- worker for Telegram downloads and local MP4 rendering;
+- worker for Telegram downloads, optional Instagram link downloads, and local MP4 rendering;
 - shell-free FFprobe/FFmpeg executor for 9:16 Reels;
 - ZIP packaging for rendered videos;
 - S3/R2 upload for MP4s and ZIPs;
@@ -101,6 +104,7 @@ The MVP technical foundation is already prepared:
 | `@aws-sdk/s3-request-presigner` | Temporary URLs | Creates signed links for large file or ZIP delivery. |
 | `archiver` | ZIP packaging | Creates the final `.zip` file with all Reels from the batch. |
 | `file-type` | File validation | Detects the real file type from binary signatures instead of trusting the file name. |
+| `yt-dlp` | Optional Instagram link download | CLI tool installed in the Docker image and called by the worker when Instagram link ingestion is enabled. |
 | `zod` | Data validation | Validates environment variables, payloads, and settings with clear errors and safe types. |
 | `dotenv` | Local environment | Loads `.env` during local development without committing secrets. |
 | `nanoid` | Internal IDs | Generates short secure IDs for batches, jobs, and files. |
@@ -115,6 +119,7 @@ The MVP technical foundation is already prepared:
 - The bot only accepts users listed in `TRUSTED_TELEGRAM_USER_IDS`.
 - The webhook uses `TELEGRAM_WEBHOOK_SECRET` to reduce fake calls.
 - Files are validated by size and real binary type, not just extension.
+- Instagram link ingestion accepts only supported Instagram media URL formats and should be used only for owned or authorized public media.
 - Secrets stay out of Git and should live in local `.env`, Railway variables, or GitHub secrets.
 - HTTP endpoints are protected with rate limiting.
 - Safer HTTP headers are applied through `@fastify/helmet`.
@@ -226,6 +231,9 @@ Main environment variables:
 | `MAX_INPUT_BYTES` | Maximum input size per video. |
 | `MAX_TELEGRAM_SEND_BYTES` | Maximum size for direct Telegram delivery. |
 | `WORKER_CONCURRENCY` | Number of jobs processed in parallel. |
+| `INSTAGRAM_DOWNLOAD_ENABLED` | Enables Instagram link ingestion when set to `true`. Default: `false`. |
+| `YT_DLP_BINARY` | Executable used by the worker for Instagram downloads. Default: `yt-dlp`. |
+| `INSTAGRAM_DOWNLOAD_TIMEOUT_MS` | Timeout per Instagram link download. Default: `120000`. |
 
 ## Database
 
@@ -258,7 +266,7 @@ Expected setup:
 - Redis available for BullMQ;
 - S3/R2 storage configured for generated files;
 - `WORK_DIR` pointing to a private container folder outside `/tmp`;
-- Docker deployment using the included `Dockerfile`, which installs `ffmpeg` and `ffprobe`;
+- Docker deployment using the included `Dockerfile`, which installs `ffmpeg`, `ffprobe`, and `yt-dlp`;
 - HTTP health check exposed by Fastify.
 
 Web process:

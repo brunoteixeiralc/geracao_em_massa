@@ -6,6 +6,7 @@ import { isTrustedTelegramUser } from "../security/access.js";
 import { type AppEnv } from "../config/env.js";
 import { TEMPLATES } from "../templates/templates.js";
 import { type BatchQueue, type BatchStore, createBatchController, type BatchControllerResponse } from "./batchController.js";
+import { extractInstagramMediaUrls } from "./instagramLinks.js";
 import { receivingKeyboard, settingsKeyboard, templateKeyboard, templatePreviewKeyboard } from "./keyboards.js";
 
 export function createTelegramBot(options: { env: AppEnv; store: BatchStore; queue?: BatchQueue }) {
@@ -16,6 +17,7 @@ export function createTelegramBot(options: { env: AppEnv; store: BatchStore; que
     ids: () => nanoid(),
     maxBatchVideos: options.env.maxBatchVideos,
     maxInputBytes: options.env.maxInputBytes,
+    instagramDownloadEnabled: options.env.instagramDownloadEnabled,
     validateMedia: validateMediaInput
   });
 
@@ -128,6 +130,20 @@ export function createTelegramBot(options: { env: AppEnv; store: BatchStore; que
 
   bot.on("message:document", async (ctx) => {
     await respond(ctx, options.store, () => controller.receiveVideo(readUser(ctx), documentFromMessage(ctx)));
+  });
+
+  bot.on("message:text", async (ctx) => {
+    const urls = extractInstagramMediaUrls(ctx.message.text);
+    if (urls.length === 0) {
+      return;
+    }
+
+    await respond(ctx, options.store, () =>
+      controller.receiveInstagramLinks(
+        readUser(ctx),
+        urls.map((url) => ({ id: nanoid(), url }))
+      )
+    );
   });
 
   bot.catch(async (error) => {

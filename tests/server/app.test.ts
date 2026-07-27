@@ -61,6 +61,9 @@ function testEnv(): AppEnv {
     maxBatchVideos: 50,
     maxInputBytes: 20 * 1024 * 1024,
     maxTelegramSendBytes: 50 * 1024 * 1024,
-    workerConcurrency: 1
+    workerConcurrency: 1,
+    instagramDownloadEnabled: false,
+    ytDlpBinary: "yt-dlp",
+    instagramDownloadTimeoutMs: 120_000
   };
 }

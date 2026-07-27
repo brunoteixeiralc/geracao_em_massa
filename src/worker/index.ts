@@ -3,6 +3,8 @@ import { parseEnv } from "../config/env.js";
 import { createDbClient } from "../db/client.js";
 import { LibsqlBatchRepository } from "../db/repositories.js";
 import { createBatchWorker } from "./batchWorker.js";
+import { createInputVideoDownloader } from "./inputVideoDownloader.js";
+import { createInstagramUrlDownloader } from "./instagramUrlDownloader.js";
 import { createTelegramFileDownloader } from "./telegramFileDownloader.js";
 import { createFfmpegRenderer } from "../renderer/ffmpegRenderer.js";
 import { createZipPackager } from "../packager/zipPackager.js";
@@ -13,10 +15,20 @@ import { createTelegramStatusPanelUpdater } from "../bot/statusPanelUpdater.js";
 const env = parseEnv(process.env);
 const db = createDbClient(env);
 const store = new LibsqlBatchRepository(db);
-const downloader = createTelegramFileDownloader({
+const telegramDownloader = createTelegramFileDownloader({
   botToken: env.telegramBotToken,
   workDir: env.workDir,
   maxInputBytes: env.maxInputBytes
+});
+const instagramDownloader = createInstagramUrlDownloader({
+  workDir: env.workDir,
+  maxInputBytes: env.maxInputBytes,
+  ytDlpBinary: env.ytDlpBinary,
+  timeoutMs: env.instagramDownloadTimeoutMs
+});
+const downloader = createInputVideoDownloader({
+  telegramDownloader,
+  instagramDownloader
 });
 const renderer = createFfmpegRenderer({
   workDir: env.workDir

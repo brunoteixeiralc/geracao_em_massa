@@ -3,7 +3,9 @@ import type { BatchStatus, VideoStatus } from "./status.js";
 
 export type BatchVideo = {
   id: string;
+  sourceType?: "telegram_file" | "instagram_url";
   fileId: string;
+  sourceUrl?: string | null;
   fileName: string;
   sizeBytes: number;
   status: VideoStatus;
