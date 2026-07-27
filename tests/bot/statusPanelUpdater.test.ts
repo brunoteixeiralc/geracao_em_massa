@@ -45,4 +45,48 @@ describe("createTelegramStatusPanelUpdater", () => {
 
     expect(calls).toEqual([]);
   });
+
+  it("ignores Telegram unchanged message responses", async () => {
+    const updater = createTelegramStatusPanelUpdater({
+      botToken: "123456:test-token",
+      fetch: async () =>
+        ({
+          ok: false,
+          status: 400,
+          text: async () =>
+            JSON.stringify({
+              ok: false,
+              error_code: 400,
+              description:
+                "Bad Request: message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message"
+            })
+        }) as Response
+    });
+    const batch = {
+      ...selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-cachorro"),
+      statusPanelChatId: "123",
+      statusPanelMessageId: 456
+    };
+
+    await expect(updater.updateBatchStatus(batch)).resolves.toBeUndefined();
+  });
+
+  it("throws on Telegram panel update errors that are not unchanged messages", async () => {
+    const updater = createTelegramStatusPanelUpdater({
+      botToken: "123456:test-token",
+      fetch: async () =>
+        ({
+          ok: false,
+          status: 400,
+          text: async () => JSON.stringify({ ok: false, error_code: 400, description: "Bad Request: chat not found" })
+        }) as Response
+    });
+    const batch = {
+      ...selectTemplate(createDraftBatch({ id: "batch-1", telegramUserId: "123" }), "humor-cachorro"),
+      statusPanelChatId: "123",
+      statusPanelMessageId: 456
+    };
+
+    await expect(updater.updateBatchStatus(batch)).rejects.toThrow("Telegram status panel update failed");
+  });
 });
