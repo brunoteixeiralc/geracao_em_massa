@@ -56,4 +56,26 @@ describe("renderBatchPanel", () => {
 
     expect(renderBatchPanel(batch)).toContain("ZIP: https://files.example.com/522.zip");
   });
+
+  it("shows the first failed video error when a batch fails", () => {
+    const batch = {
+      ...selectTemplate(createDraftBatch({ id: "522", telegramUserId: "123" }), "humor-cachorro"),
+      status: "failed" as const,
+      videos: [
+        {
+          id: "v1",
+          fileId: "instagram:https://www.instagram.com/reel/test",
+          fileName: "instagram-reel.mp4",
+          sizeBytes: 0,
+          status: "failed" as const,
+          errorMessage: "Falha ao baixar link do Instagram. Login required"
+        }
+      ]
+    };
+
+    const panel = renderBatchPanel(batch);
+
+    expect(panel).toContain("Falha no lote");
+    expect(panel).toContain("Erro: Falha ao baixar link do Instagram. Login required");
+  });
 });

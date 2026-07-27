@@ -12,6 +12,7 @@ export type BatchVideo = {
   inputPath?: string | null;
   outputPath?: string | null;
   outputUrl?: string | null;
+  errorMessage?: string | null;
 };
 
 export type Batch = {

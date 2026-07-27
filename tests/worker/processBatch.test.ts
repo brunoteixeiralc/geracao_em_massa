@@ -173,7 +173,7 @@ describe("processQueuedBatch", () => {
 
     expect(store.batches.at(-1)).toMatchObject({
       status: "failed",
-      videos: [{ id: "video-1", status: "failed" }]
+      videos: [{ id: "video-1", status: "failed", errorMessage: "download failed" }]
     });
   });
 

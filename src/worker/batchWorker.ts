@@ -60,9 +60,24 @@ export function createBatchWorker(options: {
 }
 
 function createDefaultWorker(redisUrl: string): WorkerFactory {
-  return (name, processor, options) =>
-    new Worker<BatchJobData>(name, processor, {
+  return (name, processor, options) => {
+    const worker = new Worker<BatchJobData>(name, processor, {
       ...options,
       connection: createRedisConnection(redisUrl)
     });
+
+    worker.on("failed", (job, error) => {
+      console.error("Batch job failed", {
+        jobId: job?.id,
+        batchId: job?.data.batchId,
+        error: error.message
+      });
+    });
+
+    worker.on("error", (error) => {
+      console.error("Batch worker error", { error: error.message });
+    });
+
+    return worker;
+  };
 }
